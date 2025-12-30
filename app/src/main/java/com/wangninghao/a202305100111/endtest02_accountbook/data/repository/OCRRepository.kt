@@ -65,8 +65,14 @@ class OCRRepository(context: Context) {
             if (token == null) {
                 return OCRParsedResult(
                     totalAmount = null,
+                    paidAmount = null,
                     shopName = null,
                     date = null,
+                    consumptionTime = null,
+                    discount = null,
+                    receiptNum = null,
+                    change = null,
+                    currency = null,
                     items = emptyList(),
                     success = false,
                     errorMessage = "获取AccessToken失败"
@@ -82,8 +88,14 @@ class OCRRepository(context: Context) {
             if (response.errorCode != null) {
                 return OCRParsedResult(
                     totalAmount = null,
+                    paidAmount = null,
                     shopName = null,
                     date = null,
+                    consumptionTime = null,
+                    discount = null,
+                    receiptNum = null,
+                    change = null,
+                    currency = null,
                     items = emptyList(),
                     success = false,
                     errorMessage = "OCR识别失败: ${response.errorMsg}"
@@ -95,24 +107,48 @@ class OCRRepository(context: Context) {
             if (result == null) {
                 return OCRParsedResult(
                     totalAmount = null,
+                    paidAmount = null,
                     shopName = null,
                     date = null,
+                    consumptionTime = null,
+                    discount = null,
+                    receiptNum = null,
+                    change = null,
+                    currency = null,
                     items = emptyList(),
                     success = false,
                     errorMessage = "未识别到小票信息"
                 )
             }
 
-            // 提取金额
+            // 提取金额（优先使用total_amount和paid_amount中数值较大的）
             val totalAmountStr = result.totalAmount?.firstOrNull()?.word
-                ?: result.paidAmount?.firstOrNull()?.word
-            val totalAmount = totalAmountStr?.toDoubleOrNull()
+            val paidAmountStr = result.paidAmount?.firstOrNull()?.word
+            val totalAmountValue = totalAmountStr?.toDoubleOrNull()
+            val paidAmountValue = paidAmountStr?.toDoubleOrNull()
+
+            // 取两个金额中较大的值，防止某个字段为空导致识别失败
+            val totalAmount = when {
+                totalAmountValue != null && paidAmountValue != null -> maxOf(totalAmountValue, paidAmountValue)
+                totalAmountValue != null -> totalAmountValue
+                paidAmountValue != null -> paidAmountValue
+                else -> null
+            }
 
             // 提取店名
             val shopName = result.shopName?.firstOrNull()?.word
 
             // 提取日期
             val date = result.consumptionDate?.firstOrNull()?.word
+
+            // 提取消费时间
+            val consumptionTime = result.consumptionTime?.firstOrNull()?.word
+
+            // 提取其他字段
+            val discount = result.discount?.firstOrNull()?.word
+            val receiptNum = result.receiptNum?.firstOrNull()?.word
+            val change = result.change?.firstOrNull()?.word
+            val currency = result.currency?.firstOrNull()?.word
 
             // 提取商品明细
             val items = result.table?.mapNotNull { item ->
@@ -127,8 +163,14 @@ class OCRRepository(context: Context) {
 
             OCRParsedResult(
                 totalAmount = totalAmount,
+                paidAmount = paidAmountValue,
                 shopName = shopName,
                 date = date,
+                consumptionTime = consumptionTime,
+                discount = discount,
+                receiptNum = receiptNum,
+                change = change,
+                currency = currency,
                 items = items,
                 success = true
             )
@@ -137,8 +179,14 @@ class OCRRepository(context: Context) {
             e.printStackTrace()
             OCRParsedResult(
                 totalAmount = null,
+                paidAmount = null,
                 shopName = null,
                 date = null,
+                consumptionTime = null,
+                discount = null,
+                receiptNum = null,
+                change = null,
+                currency = null,
                 items = emptyList(),
                 success = false,
                 errorMessage = "网络请求失败: ${e.message}"

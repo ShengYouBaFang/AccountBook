@@ -306,51 +306,168 @@ class AddRecordActivity : AppCompatActivity() {
     private fun handleOcrSuccess(result: com.wangninghao.a202305100111.endtest02_accountbook.network.OCRParsedResult) {
         val amount = result.totalAmount
         val shopName = result.shopName
+        val consumptionTime = result.consumptionTime
+        val consumptionDate = result.date
         val items = result.items
 
-        // 构建提示信息
+        // 构建完整的识别结果信息（展示所有非空字段）
         val message = buildString {
-            append("识别结果：\n")
-            if (shopName != null) {
-                append("商家：$shopName\n")
+            append("=== 识别结果 ===\n\n")
+
+            // 基本信息
+            if (!shopName.isNullOrBlank()) {
+                append("【商家名称】$shopName\n")
             }
-            if (amount != null) {
-                append("金额：¥${String.format("%.2f", amount)}\n")
+            if (amount != null && amount > 0) {
+                append("【总金额】¥${String.format("%.2f", amount)}\n")
             }
+            if (result.paidAmount != null && result.paidAmount > 0) {
+                append("【实收金额】¥${String.format("%.2f", result.paidAmount)}\n")
+            }
+            if (!result.discount.isNullOrBlank()) {
+                append("【优惠/折扣】${result.discount}\n")
+            }
+            if (!result.change.isNullOrBlank()) {
+                append("【找零】${result.change}\n")
+            }
+            if (!result.currency.isNullOrBlank()) {
+                append("【币种】${result.currency}\n")
+            }
+
+            // 时间信息
+            if (!consumptionDate.isNullOrBlank()) {
+                append("【消费日期】$consumptionDate\n")
+            }
+            if (!consumptionTime.isNullOrBlank()) {
+                append("【消费时间】$consumptionTime\n")
+            }
+
+            // 小票信息
+            if (!result.receiptNum.isNullOrBlank()) {
+                append("【小票号】${result.receiptNum}\n")
+            }
+
+            // 商品明细
             if (items.isNotEmpty()) {
-                append("\n商品明细：\n")
-                items.take(5).forEach { item ->
-                    append("• ${item.name} ¥${item.subtotal}\n")
-                }
-                if (items.size > 5) {
-                    append("...等${items.size}件商品")
+                append("\n=== 商品明细（${items.size}件）===\n")
+                items.forEach { item ->
+                    append("• ${item.name}")
+                    if (item.quantity.isNotBlank()) {
+                        append(" x${item.quantity}")
+                    }
+                    if (item.subtotal.isNotBlank()) {
+                        append(" ¥${item.subtotal}")
+                    }
+                    append("\n")
                 }
             }
         }
 
+        // 创建可滚动的对话框
+        val scrollView = android.widget.ScrollView(this).apply {
+            layoutParams = android.view.ViewGroup.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        val textView = android.widget.TextView(this).apply {
+            text = message
+            setPadding(48, 24, 48, 24)
+            textSize = 14f
+        }
+
+        scrollView.addView(textView)
+
         AlertDialog.Builder(this)
             .setTitle("小票识别完成")
-            .setMessage(message)
-            .setPositiveButton("使用此金额") { _, _ ->
-                if (amount != null && amount > 0) {
-                    // 自动填充金额
-                    binding.etAmount.setText(String.format("%.2f", amount))
-                    // 设置为支出
-                    viewModel.setRecordType(RecordType.EXPENSE)
-                    // 添加备注
-                    if (shopName != null) {
-                        binding.etNote.setText(shopName)
-                    }
-                    Toast.makeText(this, "已自动填充金额", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "未识别到有效金额", Toast.LENGTH_SHORT).show()
-                }
+            .setView(scrollView)
+            .setPositiveButton("使用识别结果") { _, _ ->
+                applyOcrResult(result)
             }
             .setNegativeButton("取消", null)
             .show()
 
         viewModel.clearOcrState()
     }
+
+    /**
+     * 应用OCR识别结果到表单
+     */
+    private fun applyOcrResult(result: com.wangninghao.a202305100111.endtest02_accountbook.network.OCRParsedResult) {
+        val amount = result.totalAmount
+        val shopName = result.shopName
+        val consumptionTime = result.consumptionTime
+        val consumptionDate = result.date
+
+        // 1. 设置为支出类型
+        viewModel.setRecordType(RecordType.EXPENSE)
+
+        // 2. 自动填充金额
+        if (amount != null && amount > 0) {
+            binding.etAmount.setText(String.format("%.2f", amount))
+        }
+
+        // 3. 自动填充日期（如果识别到了消费日期）
+        if (!consumptionDate.isNullOrBlank()) {
+            try {
+                // 尝试解析日期字符串，支持多种格式
+                val parsedDate = parseOcrDate(consumptionDate)
+                if (parsedDate != null) {
+                    viewModel.setDate(parsedDate)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // 4. 自动填充备注（店名 + 消费时间）
+        val noteBuilder = StringBuilder()
+        if (!shopName.isNullOrBlank()) {
+            noteBuilder.append(shopName)
+        }
+        if (!consumptionTime.isNullOrBlank()) {
+            if (noteBuilder.isNotEmpty()) {
+                noteBuilder.append(" ")
+            }
+            noteBuilder.append(consumptionTime)
+        }
+        if (noteBuilder.isNotEmpty()) {
+            binding.etNote.setText(noteBuilder.toString())
+        }
+
+        Toast.makeText(this, "已自动填充识别结果", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * 解析OCR识别的日期字符串
+     * 支持格式：2020-10-23, 2020/10/23, 2020.10.23 等
+     */
+    private fun parseOcrDate(dateStr: String): Long? {
+        val formats = listOf(
+            "yyyy-MM-dd",
+            "yyyy/MM/dd",
+            "yyyy.MM.dd",
+            "yyyy年MM月dd日",
+            "MM-dd-yyyy",
+            "dd-MM-yyyy"
+        )
+
+        for (format in formats) {
+            try {
+                val sdf = java.text.SimpleDateFormat(format, java.util.Locale.getDefault())
+                sdf.isLenient = false
+                val date = sdf.parse(dateStr)
+                if (date != null) {
+                    return date.time
+                }
+            } catch (e: Exception) {
+                // 继续尝试下一个格式
+            }
+        }
+        return null
+    }
+
 
     private fun updateDateDisplay(timestamp: Long) {
         val friendlyDate = DateUtils.getFriendlyDate(timestamp)

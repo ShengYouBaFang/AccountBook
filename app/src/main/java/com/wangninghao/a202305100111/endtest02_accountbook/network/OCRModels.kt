@@ -46,6 +46,20 @@ data class ReceiptResult(
     val consumptionTime: List<WordItem>?,
     @SerializedName("discount")
     val discount: List<WordItem>?,
+    @SerializedName("receipt_num")
+    val receiptNum: List<WordItem>?,
+    @SerializedName("machine_num")
+    val machineNum: List<WordItem>?,
+    @SerializedName("employee_num")
+    val employeeNum: List<WordItem>?,
+    @SerializedName("change")
+    val change: List<WordItem>?,
+    @SerializedName("currency")
+    val currency: List<WordItem>?,
+    @SerializedName("print_date")
+    val printDate: List<WordItem>?,
+    @SerializedName("print_time")
+    val printTime: List<WordItem>?,
     @SerializedName("table")
     val table: List<TableItem>?,
     @SerializedName("table_row_num")
@@ -79,8 +93,14 @@ data class TableItem(
  */
 data class OCRParsedResult(
     val totalAmount: Double?,
+    val paidAmount: Double?,           // 实收金额
     val shopName: String?,
-    val date: String?,
+    val date: String?,                 // 消费日期
+    val consumptionTime: String?,      // 消费时间
+    val discount: String?,             // 折扣/优惠
+    val receiptNum: String?,           // 小票号
+    val change: String?,               // 找零
+    val currency: String?,             // 币种
     val items: List<OCRItem>,
     val success: Boolean,
     val errorMessage: String? = null
