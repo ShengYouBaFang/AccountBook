@@ -38,17 +38,10 @@ android {
         viewBinding = true
     }
 
-    // 解决POI库的重复文件问题
+    // 解决库文件冲突问题
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            excludes += "META-INF/DEPENDENCIES"
-            excludes += "META-INF/LICENSE"
-            excludes += "META-INF/LICENSE.txt"
-            excludes += "META-INF/license.txt"
-            excludes += "META-INF/NOTICE"
-            excludes += "META-INF/NOTICE.txt"
-            excludes += "META-INF/notice.txt"
         }
     }
 }
@@ -100,9 +93,8 @@ dependencies {
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
 
-    // Apache POI (Excel导出)
-    implementation(libs.poi)
-    implementation(libs.poi.ooxml)
+    // JXL (Excel导出 - Android兼容)
+    implementation(libs.jxl)
 
     // Testing
     testImplementation(libs.junit)

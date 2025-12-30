@@ -7,14 +7,16 @@ import android.os.Environment
 import android.provider.MediaStore
 import com.wangninghao.a202305100111.endtest02_accountbook.data.entity.Record
 import com.wangninghao.a202305100111.endtest02_accountbook.data.entity.RecordType
-import org.apache.poi.hssf.usermodel.HSSFCellStyle
-import org.apache.poi.hssf.usermodel.HSSFWorkbook
-import org.apache.poi.hssf.util.HSSFColor
-import org.apache.poi.ss.usermodel.BorderStyle
-import org.apache.poi.ss.usermodel.FillPatternType
-import org.apache.poi.ss.usermodel.HorizontalAlignment
+import jxl.Workbook
+import jxl.format.Alignment
+import jxl.format.Border
+import jxl.format.BorderLineStyle
+import jxl.format.Colour
+import jxl.write.Label
+import jxl.write.WritableCellFormat
+import jxl.write.WritableFont
+import jxl.write.WritableWorkbook
 import java.io.File
-import java.io.FileOutputStream
 import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -22,6 +24,7 @@ import java.util.Locale
 
 /**
  * Excel导出工具类
+ * 使用JXL库（Android兼容）
  */
 object ExcelExporter {
 
@@ -35,103 +38,8 @@ object ExcelExporter {
      */
     fun exportRecords(context: Context, records: List<Record>): Result<String> {
         return try {
-            val workbook = HSSFWorkbook()
-
-            // 创建样式
-            val headerStyle = createHeaderStyle(workbook)
-            val incomeStyle = createIncomeStyle(workbook)
-            val expenseStyle = createExpenseStyle(workbook)
-            val normalStyle = createNormalStyle(workbook)
-
-            // 创建工作表
-            val sheet = workbook.createSheet("账单记录")
-
-            // 设置列宽
-            sheet.setColumnWidth(0, 5000)  // 日期
-            sheet.setColumnWidth(1, 3000)  // 类型
-            sheet.setColumnWidth(2, 4000)  // 分类
-            sheet.setColumnWidth(3, 4000)  // 金额
-            sheet.setColumnWidth(4, 8000)  // 备注
-
-            // 创建表头
-            val headerRow = sheet.createRow(0)
-            val headers = arrayOf("日期", "类型", "分类", "金额", "备注")
-            headers.forEachIndexed { index, header ->
-                val cell = headerRow.createCell(index)
-                cell.setCellValue(header)
-                cell.setCellStyle(headerStyle)
-            }
-
-            // 填充数据
-            records.forEachIndexed { index, record ->
-                val row = sheet.createRow(index + 1)
-
-                // 日期
-                row.createCell(0).apply {
-                    setCellValue(dateFormat.format(Date(record.timestamp)))
-                    setCellStyle(normalStyle)
-                }
-
-                // 类型
-                row.createCell(1).apply {
-                    setCellValue(if (record.type == RecordType.INCOME) "收入" else "支出")
-                    setCellStyle(if (record.type == RecordType.INCOME) incomeStyle else expenseStyle)
-                }
-
-                // 分类
-                row.createCell(2).apply {
-                    setCellValue(record.category)
-                    setCellStyle(normalStyle)
-                }
-
-                // 金额
-                row.createCell(3).apply {
-                    val prefix = if (record.type == RecordType.INCOME) "+" else "-"
-                    setCellValue("$prefix${String.format("%.2f", record.amount)}")
-                    setCellStyle(if (record.type == RecordType.INCOME) incomeStyle else expenseStyle)
-                }
-
-                // 备注
-                row.createCell(4).apply {
-                    setCellValue(record.note)
-                    setCellStyle(normalStyle)
-                }
-            }
-
-            // 添加统计行
-            val summaryRowIndex = records.size + 2
-            val totalIncome = records.filter { it.type == RecordType.INCOME }.sumOf { it.amount }
-            val totalExpense = records.filter { it.type == RecordType.EXPENSE }.sumOf { it.amount }
-
-            sheet.createRow(summaryRowIndex).apply {
-                createCell(0).apply {
-                    setCellValue("总计")
-                    setCellStyle(headerStyle)
-                }
-                createCell(1).apply {
-                    setCellValue("收入")
-                    setCellStyle(incomeStyle)
-                }
-                createCell(2).apply {
-                    setCellValue(String.format("+%.2f", totalIncome))
-                    setCellStyle(incomeStyle)
-                }
-                createCell(3).apply {
-                    setCellValue("支出")
-                    setCellStyle(expenseStyle)
-                }
-                createCell(4).apply {
-                    setCellValue(String.format("-%.2f", totalExpense))
-                    setCellStyle(expenseStyle)
-                }
-            }
-
-            // 保存文件
             val fileName = "账单_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.xls"
-            val filePath = saveToDownloads(context, workbook, fileName)
-
-            workbook.close()
-
+            val filePath = saveToDownloads(context, records, fileName)
             Result.success(filePath)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -142,7 +50,7 @@ object ExcelExporter {
     /**
      * 保存文件到Downloads目录
      */
-    private fun saveToDownloads(context: Context, workbook: HSSFWorkbook, fileName: String): String {
+    private fun saveToDownloads(context: Context, records: List<Record>, fileName: String): String {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // Android 10+ 使用MediaStore
             val contentValues = ContentValues().apply {
@@ -157,87 +65,151 @@ object ExcelExporter {
             ) ?: throw Exception("无法创建文件")
 
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                workbook.write(outputStream)
-            }
+                writeExcelToStream(outputStream, records)
+            } ?: throw Exception("无法打开文件流")
 
             "Downloads/$fileName"
         } else {
             // Android 9及以下
             val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val file = File(downloadsDir, fileName)
-            FileOutputStream(file).use { outputStream ->
-                workbook.write(outputStream)
-            }
+            writeExcelToFile(file, records)
             file.absolutePath
         }
     }
 
     /**
+     * 写入Excel到输出流（Android 10+）
+     */
+    private fun writeExcelToStream(outputStream: OutputStream, records: List<Record>) {
+        val workbook: WritableWorkbook = Workbook.createWorkbook(outputStream)
+        try {
+            writeWorkbookContent(workbook, records)
+            workbook.write()
+        } finally {
+            workbook.close()
+        }
+    }
+
+    /**
+     * 写入Excel到文件（Android 9及以下）
+     */
+    private fun writeExcelToFile(file: File, records: List<Record>) {
+        val workbook: WritableWorkbook = Workbook.createWorkbook(file)
+        try {
+            writeWorkbookContent(workbook, records)
+            workbook.write()
+        } finally {
+            workbook.close()
+        }
+    }
+
+    /**
+     * 写入工作簿内容
+     */
+    private fun writeWorkbookContent(workbook: WritableWorkbook, records: List<Record>) {
+        val sheet = workbook.createSheet("账单记录", 0)
+
+        // 设置列宽
+        sheet.setColumnView(0, 18)  // 日期
+        sheet.setColumnView(1, 8)   // 类型
+        sheet.setColumnView(2, 12)  // 分类
+        sheet.setColumnView(3, 12)  // 金额
+        sheet.setColumnView(4, 25)  // 备注
+
+        // 创建样式
+        val headerFormat = createHeaderFormat()
+        val incomeFormat = createIncomeFormat()
+        val expenseFormat = createExpenseFormat()
+        val normalFormat = createNormalFormat()
+
+        // 创建表头
+        val headers = arrayOf("日期", "类型", "分类", "金额", "备注")
+        headers.forEachIndexed { index, header ->
+            sheet.addCell(Label(index, 0, header, headerFormat))
+        }
+
+        // 填充数据
+        records.forEachIndexed { index, record ->
+            val row = index + 1
+
+            // 日期
+            sheet.addCell(Label(0, row, dateFormat.format(Date(record.timestamp)), normalFormat))
+
+            // 类型
+            val typeText = if (record.type == RecordType.INCOME) "收入" else "支出"
+            val typeFormat = if (record.type == RecordType.INCOME) incomeFormat else expenseFormat
+            sheet.addCell(Label(1, row, typeText, typeFormat))
+
+            // 分类
+            sheet.addCell(Label(2, row, record.category, normalFormat))
+
+            // 金额
+            val prefix = if (record.type == RecordType.INCOME) "+" else "-"
+            val amountText = "$prefix${String.format("%.2f", record.amount)}"
+            val amountFormat = if (record.type == RecordType.INCOME) incomeFormat else expenseFormat
+            sheet.addCell(Label(3, row, amountText, amountFormat))
+
+            // 备注
+            sheet.addCell(Label(4, row, record.note, normalFormat))
+        }
+
+        // 添加统计行
+        val summaryRow = records.size + 2
+        val totalIncome = records.filter { it.type == RecordType.INCOME }.sumOf { it.amount }
+        val totalExpense = records.filter { it.type == RecordType.EXPENSE }.sumOf { it.amount }
+
+        sheet.addCell(Label(0, summaryRow, "总计", headerFormat))
+        sheet.addCell(Label(1, summaryRow, "收入", incomeFormat))
+        sheet.addCell(Label(2, summaryRow, String.format("+%.2f", totalIncome), incomeFormat))
+        sheet.addCell(Label(3, summaryRow, "支出", expenseFormat))
+        sheet.addCell(Label(4, summaryRow, String.format("-%.2f", totalExpense), expenseFormat))
+    }
+
+    /**
      * 创建表头样式
      */
-    private fun createHeaderStyle(workbook: HSSFWorkbook): HSSFCellStyle {
-        return workbook.createCellStyle().apply {
-            fillForegroundColor = HSSFColor.HSSFColorPredefined.GREY_25_PERCENT.index
-            fillPattern = FillPatternType.SOLID_FOREGROUND
-            setAlignment(HorizontalAlignment.CENTER)
-            borderTop = BorderStyle.THIN
-            borderBottom = BorderStyle.THIN
-            borderLeft = BorderStyle.THIN
-            borderRight = BorderStyle.THIN
-
-            val font = workbook.createFont().apply {
-                bold = true
-            }
-            setFont(font)
+    private fun createHeaderFormat(): WritableCellFormat {
+        val font = WritableFont(WritableFont.ARIAL, 10, WritableFont.BOLD)
+        return WritableCellFormat(font).apply {
+            setAlignment(Alignment.CENTRE)
+            setBackground(Colour.GREY_25_PERCENT)
+            setBorder(Border.ALL, BorderLineStyle.THIN)
         }
     }
 
     /**
      * 创建收入样式（绿色）
      */
-    private fun createIncomeStyle(workbook: HSSFWorkbook): HSSFCellStyle {
-        return workbook.createCellStyle().apply {
-            setAlignment(HorizontalAlignment.CENTER)
-            borderTop = BorderStyle.THIN
-            borderBottom = BorderStyle.THIN
-            borderLeft = BorderStyle.THIN
-            borderRight = BorderStyle.THIN
-
-            val font = workbook.createFont().apply {
-                color = HSSFColor.HSSFColorPredefined.GREEN.index
-            }
-            setFont(font)
+    private fun createIncomeFormat(): WritableCellFormat {
+        val font = WritableFont(WritableFont.ARIAL, 10)
+        font.colour = Colour.GREEN
+        return WritableCellFormat(font).apply {
+            setAlignment(Alignment.CENTRE)
+            setBorder(Border.ALL, BorderLineStyle.THIN)
         }
     }
 
     /**
      * 创建支出样式（红色）
      */
-    private fun createExpenseStyle(workbook: HSSFWorkbook): HSSFCellStyle {
-        return workbook.createCellStyle().apply {
-            setAlignment(HorizontalAlignment.CENTER)
-            borderTop = BorderStyle.THIN
-            borderBottom = BorderStyle.THIN
-            borderLeft = BorderStyle.THIN
-            borderRight = BorderStyle.THIN
-
-            val font = workbook.createFont().apply {
-                color = HSSFColor.HSSFColorPredefined.RED.index
-            }
-            setFont(font)
+    private fun createExpenseFormat(): WritableCellFormat {
+        val font = WritableFont(WritableFont.ARIAL, 10)
+        font.colour = Colour.RED
+        return WritableCellFormat(font).apply {
+            setAlignment(Alignment.CENTRE)
+            setBorder(Border.ALL, BorderLineStyle.THIN)
         }
     }
 
     /**
      * 创建普通样式
      */
-    private fun createNormalStyle(workbook: HSSFWorkbook): HSSFCellStyle {
-        return workbook.createCellStyle().apply {
-            setAlignment(HorizontalAlignment.CENTER)
-            borderTop = BorderStyle.THIN
-            borderBottom = BorderStyle.THIN
-            borderLeft = BorderStyle.THIN
-            borderRight = BorderStyle.THIN
+    private fun createNormalFormat(): WritableCellFormat {
+        val font = WritableFont(WritableFont.ARIAL, 10)
+        return WritableCellFormat(font).apply {
+            setAlignment(Alignment.CENTRE)
+            setBorder(Border.ALL, BorderLineStyle.THIN)
         }
     }
 }

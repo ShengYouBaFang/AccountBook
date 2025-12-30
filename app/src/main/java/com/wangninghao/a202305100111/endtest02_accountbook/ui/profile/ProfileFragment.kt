@@ -127,9 +127,10 @@ class ProfileFragment : Fragment() {
      */
     private fun performExport() {
         val userId = sessionManager.getCurrentUserPhone() ?: return
+        val ctx = context ?: return
 
         // 显示加载提示
-        Toast.makeText(context, "正在导出数据...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(ctx, "正在导出数据...", Toast.LENGTH_SHORT).show()
 
         lifecycleScope.launch {
             try {
@@ -139,13 +140,13 @@ class ProfileFragment : Fragment() {
                 }
 
                 if (records.isEmpty()) {
-                    Toast.makeText(context, "没有可导出的数据", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, "没有可导出的数据", Toast.LENGTH_SHORT).show()
                     return@launch
                 }
 
                 // 在IO线程执行导出
                 val result = withContext(Dispatchers.IO) {
-                    ExcelExporter.exportRecords(requireContext(), records)
+                    ExcelExporter.exportRecords(ctx, records)
                 }
 
                 result.fold(
@@ -153,12 +154,12 @@ class ProfileFragment : Fragment() {
                         showExportSuccessDialog(filePath, records.size)
                     },
                     onFailure = { e ->
-                        Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(ctx, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(ctx, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
