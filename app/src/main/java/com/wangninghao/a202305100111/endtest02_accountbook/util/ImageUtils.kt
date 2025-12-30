@@ -10,27 +10,36 @@ import android.util.Log
 import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayOutputStream
 import java.net.URLEncoder
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 
 /**
  * 图片处理工具类
+ * 优化OCR识别：保持图片完整性，不裁剪，仅按比例缩放
  */
 object ImageUtils {
 
     private const val TAG = "ImageUtils"
 
+    // 百度OCR API限制：最长边4096px，base64不超过4MB
+    private const val MAX_DIMENSION = 4096
+    private const val MAX_BASE64_SIZE = 4 * 1024 * 1024 // 4MB
+    private const val TARGET_BASE64_SIZE = 3 * 1024 * 1024 // 3MB，留有余量
+
     /**
-     * 从Uri加载并压缩图片
+     * 从Uri加载图片，保持完整性，仅在必要时按比例缩放
+     * 不裁剪任何区域，确保图片内容完整
+     *
      * @param context 上下文
      * @param uri 图片Uri
-     * @param maxWidth 最大宽度
-     * @param maxHeight 最大高度
-     * @return 压缩后的Bitmap
+     * @param maxDimension 最长边最大尺寸（默认4096，百度OCR API限制）
+     * @return 处理后的Bitmap
      */
     fun loadAndCompressBitmap(
         context: Context,
         uri: Uri,
-        maxWidth: Int = 1024,
-        maxHeight: Int = 1024
+        maxDimension: Int = MAX_DIMENSION
     ): Bitmap? {
         return try {
             Log.d(TAG, "Loading image from uri: $uri")
@@ -49,19 +58,16 @@ object ImageUtils {
                 return null
             }
 
-            Log.d(TAG, "Original image size: ${options.outWidth}x${options.outHeight}")
+            val originalWidth = options.outWidth
+            val originalHeight = options.outHeight
+            Log.d(TAG, "Original image size: ${originalWidth}x${originalHeight}")
 
-            // 计算缩放比例
-            val width = options.outWidth
-            val height = options.outHeight
-            var sampleSize = 1
-            while (width / sampleSize > maxWidth || height / sampleSize > maxHeight) {
-                sampleSize *= 2
-            }
+            // 计算初始采样率（用于内存优化，避免OOM）
+            // 使用较小的采样率以保留更多细节
+            val sampleSize = calculateOptimalSampleSize(originalWidth, originalHeight, maxDimension)
+            Log.d(TAG, "Initial sample size: $sampleSize")
 
-            Log.d(TAG, "Sample size: $sampleSize")
-
-            // 加载压缩后的图片
+            // 加载图片
             val loadOptions = BitmapFactory.Options().apply {
                 inSampleSize = sampleSize
                 inPreferredConfig = Bitmap.Config.ARGB_8888
@@ -81,11 +87,26 @@ object ImageUtils {
 
             // 处理图片旋转
             val rotation = getRotation(context, uri)
-            val finalBitmap = if (rotation != 0) {
+            var finalBitmap = if (rotation != 0) {
                 Log.d(TAG, "Rotating bitmap by $rotation degrees")
-                rotateBitmap(bitmap!!, rotation)
+                val rotated = rotateBitmap(bitmap!!, rotation)
+                if (rotated != bitmap) {
+                    bitmap!!.recycle()
+                }
+                rotated
             } else {
                 bitmap!!
+            }
+
+            // 如果旋转后的图片仍然超过最大尺寸限制，进行精确缩放
+            val maxSide = max(finalBitmap.width, finalBitmap.height)
+            if (maxSide > maxDimension) {
+                Log.d(TAG, "Image still too large ($maxSide), scaling to fit $maxDimension")
+                val scaledBitmap = scaleToFit(finalBitmap, maxDimension)
+                if (scaledBitmap != finalBitmap) {
+                    finalBitmap.recycle()
+                }
+                finalBitmap = scaledBitmap
             }
 
             Log.d(TAG, "Final bitmap size: ${finalBitmap.width}x${finalBitmap.height}")
@@ -96,6 +117,45 @@ object ImageUtils {
             e.printStackTrace()
             null
         }
+    }
+
+    /**
+     * 计算最优采样率
+     * 目标：在不超过内存限制的情况下，尽可能保留图片细节
+     */
+    private fun calculateOptimalSampleSize(width: Int, height: Int, maxDimension: Int): Int {
+        var sampleSize = 1
+        val maxSide = max(width, height)
+
+        // 只有当图片非常大时才使用采样
+        // 目标是让采样后的图片最长边接近但不小于 maxDimension
+        while (maxSide / sampleSize > maxDimension * 2) {
+            sampleSize *= 2
+        }
+
+        return sampleSize
+    }
+
+    /**
+     * 精确缩放图片到指定的最大尺寸
+     * 保持宽高比，不裁剪
+     */
+    private fun scaleToFit(bitmap: Bitmap, maxDimension: Int): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+        val maxSide = max(width, height)
+
+        if (maxSide <= maxDimension) {
+            return bitmap
+        }
+
+        val scale = maxDimension.toFloat() / maxSide.toFloat()
+        val newWidth = (width * scale).toInt()
+        val newHeight = (height * scale).toInt()
+
+        Log.d(TAG, "Scaling from ${width}x${height} to ${newWidth}x${newHeight}")
+
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
     /**
@@ -130,15 +190,43 @@ object ImageUtils {
 
     /**
      * 将Bitmap转换为Base64字符串
+     * 自动调整压缩质量以确保不超过大小限制
+     *
      * @param bitmap 图片
-     * @param quality 压缩质量 (0-100)
+     * @param initialQuality 初始压缩质量 (0-100)
      * @return Base64编码的字符串
      */
-    fun bitmapToBase64(bitmap: Bitmap, quality: Int = 85): String {
-        val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
-        val bytes = outputStream.toByteArray()
-        Log.d(TAG, "Compressed image size: ${bytes.size} bytes")
+    fun bitmapToBase64(bitmap: Bitmap, initialQuality: Int = 95): String {
+        var quality = initialQuality
+        var bytes: ByteArray
+
+        // 尝试不同的压缩质量，确保不超过大小限制
+        do {
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+            bytes = outputStream.toByteArray()
+
+            Log.d(TAG, "Compressed with quality $quality: ${bytes.size} bytes")
+
+            // 如果大小超过限制且质量还可以降低，继续压缩
+            if (bytes.size > TARGET_BASE64_SIZE && quality > 50) {
+                quality -= 10
+                Log.d(TAG, "Image too large, reducing quality to $quality")
+            } else {
+                break
+            }
+        } while (quality >= 50)
+
+        // 如果还是太大，尝试更低的质量
+        if (bytes.size > MAX_BASE64_SIZE && quality > 30) {
+            quality = 30
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+            bytes = outputStream.toByteArray()
+            Log.d(TAG, "Final compression with quality $quality: ${bytes.size} bytes")
+        }
+
+        Log.d(TAG, "Final compressed image size: ${bytes.size} bytes (${bytes.size / 1024}KB)")
         return Base64.encodeToString(bytes, Base64.NO_WRAP)
     }
 
@@ -146,7 +234,7 @@ object ImageUtils {
      * 将Bitmap转换为URLEncode后的Base64字符串（用于百度OCR API）
      * 注意：百度OCR API要求image参数进行URL编码
      */
-    fun bitmapToUrlEncodedBase64(bitmap: Bitmap, quality: Int = 85): String {
+    fun bitmapToUrlEncodedBase64(bitmap: Bitmap, quality: Int = 95): String {
         val base64 = bitmapToBase64(bitmap, quality)
         Log.d(TAG, "Base64 string length: ${base64.length}")
         return URLEncoder.encode(base64, "UTF-8")
@@ -172,6 +260,7 @@ object ImageUtils {
 
     /**
      * 从Uri直接获取Base64字符串（不进行URL编码）
+     * 优化版本：保持图片完整，自动调整压缩质量
      */
     fun uriToBase64(context: Context, uri: Uri): String? {
         Log.d(TAG, "Converting uri to base64 (no url encode): $uri")
@@ -185,13 +274,14 @@ object ImageUtils {
         if (!bitmap.isRecycled) {
             bitmap.recycle()
         }
+        Log.d(TAG, "Final base64 length: ${result.length} chars")
         return result
     }
 
     /**
      * 计算图片文件大小（压缩后）
      */
-    fun getCompressedSize(bitmap: Bitmap, quality: Int = 85): Long {
+    fun getCompressedSize(bitmap: Bitmap, quality: Int = 95): Long {
         val outputStream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
         return outputStream.size().toLong()
