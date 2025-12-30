@@ -109,10 +109,14 @@ class BudgetFragment : Fragment() {
         }
 
         viewModel.totalBudget.observe(viewLifecycleOwner) { budget ->
-            // 更新预算显示
+            // 预算变化时更新图表
+            val expense = viewModel.monthlyExpense.value ?: 0.0
+            val budgetAmount = budget?.amount ?: 0.0
+            updateBudgetChart(expense, budgetAmount)
         }
 
         viewModel.monthlyExpense.observe(viewLifecycleOwner) { expense ->
+            // 支出变化时更新图表
             val budget = viewModel.totalBudget.value?.amount ?: 0.0
             updateBudgetChart(expense, budget)
         }
@@ -139,10 +143,14 @@ class BudgetFragment : Fragment() {
             return
         }
 
-        val remaining = (total - used).coerceAtLeast(0.0)
+        // 计算实际剩余（可以为负数）
+        val actualRemaining = total - used
+        // 图表用的剩余值（不能为负数）
+        val chartRemaining = actualRemaining.coerceAtLeast(0.0)
+
         val entries = listOf(
             PieEntry(used.toFloat(), "已使用"),
-            PieEntry(remaining.toFloat(), "剩余")
+            PieEntry(chartRemaining.toFloat(), "剩余")
         )
 
         val colors = listOf(
@@ -160,10 +168,11 @@ class BudgetFragment : Fragment() {
         binding.pieChartTotal.invalidate()
 
         binding.tvUsed.text = "已使用 ¥${CurrencyFormatter.format(used)}"
-        binding.tvRemaining.text = if (remaining > 0) {
-            "剩余 ¥${CurrencyFormatter.format(remaining)}"
+        // 使用实际剩余值判断是否超支
+        binding.tvRemaining.text = if (actualRemaining >= 0) {
+            "剩余 ¥${CurrencyFormatter.format(actualRemaining)}"
         } else {
-            "已超支 ¥${CurrencyFormatter.format(-remaining)}"
+            "已超支 ¥${CurrencyFormatter.format(-actualRemaining)}"
         }
     }
 

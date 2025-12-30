@@ -1,6 +1,8 @@
 package com.wangninghao.a202305100111.endtest02_accountbook.ui.statistics
 
 import android.animation.ObjectAnimator
+import android.graphics.PorterDuff
+import android.graphics.drawable.LayerDrawable
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
@@ -28,8 +30,9 @@ data class CategoryBarItem(
  */
 class CategoryBarAdapter : ListAdapter<CategoryBarItem, CategoryBarAdapter.ViewHolder>(DiffCallback()) {
 
-    // 记录是否需要播放动画（仅在首次加载或数据变更时）
-    private var shouldAnimate = true
+    // 记录是否需要播放动画（仅在首次加载时）
+    private var isFirstLoad = true
+    private var shouldAnimate = false
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemCategoryBarBinding.inflate(
@@ -43,11 +46,20 @@ class CategoryBarAdapter : ListAdapter<CategoryBarItem, CategoryBarAdapter.ViewH
     }
 
     override fun submitList(list: List<CategoryBarItem>?) {
-        shouldAnimate = true
-        super.submitList(list) {
-            // 动画播放完成后标记为不需要动画
-            shouldAnimate = false
+        // 只有首次加载才播放动画
+        shouldAnimate = isFirstLoad && !list.isNullOrEmpty()
+        if (isFirstLoad && !list.isNullOrEmpty()) {
+            isFirstLoad = false
         }
+        super.submitList(list)
+    }
+
+    /**
+     * 强制刷新并播放动画（用于切换类型时）
+     */
+    fun submitListWithAnimation(list: List<CategoryBarItem>?) {
+        shouldAnimate = !list.isNullOrEmpty()
+        super.submitList(list)
     }
 
     inner class ViewHolder(
@@ -62,13 +74,16 @@ class CategoryBarAdapter : ListAdapter<CategoryBarItem, CategoryBarAdapter.ViewH
             // 显示的百分比使用 displayPercent（按总和计算的占比）
             binding.tvPercent.text = String.format("%.1f%%", item.displayPercent)
 
-            // 设置进度条颜色
-            binding.progressBar.progressDrawable.setTint(item.color)
+            // 设置进度条颜色 - 只着色进度层，不影响背景层
+            val progressDrawable = binding.progressBar.progressDrawable.mutate() as? LayerDrawable
+            progressDrawable?.findDrawableByLayerId(android.R.id.progress)?.let { progressLayer ->
+                progressLayer.setColorFilter(item.color, PorterDuff.Mode.SRC_IN)
+            }
 
             // 取消之前的动画
             currentAnimator?.cancel()
 
-            // 进度条长度使用 percent（按最大值为100%）
+            // 进度条长度使用 percent
             val targetProgress = item.percent.toInt().coerceIn(0, 100)
 
             if (animate) {

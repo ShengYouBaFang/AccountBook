@@ -63,15 +63,22 @@ class HomeFragment : Fragment() {
         animateFab()
     }
 
+    // 标记是否首次创建，避免动画重复播放
+    private var isFirstCreate = true
+
     override fun onResume() {
         super.onResume()
         // 每次返回页面时刷新数据
         viewModel.loadRecords()
-        // 重新播放列表动画
-        binding.recyclerView.scheduleLayoutAnimation()
+        // 仅在非首次创建时不播放列表动画，避免与 onViewCreated 动画重复
+        // 首次创建的动画由 layout 中的 layoutAnimation 自动处理
     }
 
     private fun animateFab() {
+        // 仅在首次创建时播放动画
+        if (!isFirstCreate) return
+        isFirstCreate = false
+
         binding.fabAdd.scaleX = 0f
         binding.fabAdd.scaleY = 0f
 

@@ -126,37 +126,37 @@ class AddRecordActivity : AppCompatActivity() {
 
         // 初始状态
         scrollContent.alpha = 0f
-        scrollContent.translationY = 50f
+        scrollContent.translationY = 30f
 
-        // 内容区域动画
+        // 内容区域动画 - 延迟等待页面跳转动画结束
         AnimatorSet().apply {
             playTogether(
                 ObjectAnimator.ofFloat(scrollContent, View.ALPHA, 0f, 1f),
-                ObjectAnimator.ofFloat(scrollContent, View.TRANSLATION_Y, 50f, 0f)
+                ObjectAnimator.ofFloat(scrollContent, View.TRANSLATION_Y, 30f, 0f)
             )
-            duration = 400
-            startDelay = 200
+            duration = 300
+            startDelay = 100  // 减少延迟，让动画更快开始
             interpolator = DecelerateInterpolator()
             start()
         }
 
         // 保存按钮动画
-        binding.btnSave.scaleX = 0.8f
-        binding.btnSave.scaleY = 0.8f
+        binding.btnSave.scaleX = 0.9f
+        binding.btnSave.scaleY = 0.9f
         binding.btnSave.alpha = 0f
 
         binding.btnSave.postDelayed({
             AnimatorSet().apply {
                 playTogether(
-                    ObjectAnimator.ofFloat(binding.btnSave, View.SCALE_X, 0.8f, 1f),
-                    ObjectAnimator.ofFloat(binding.btnSave, View.SCALE_Y, 0.8f, 1f),
+                    ObjectAnimator.ofFloat(binding.btnSave, View.SCALE_X, 0.9f, 1f),
+                    ObjectAnimator.ofFloat(binding.btnSave, View.SCALE_Y, 0.9f, 1f),
                     ObjectAnimator.ofFloat(binding.btnSave, View.ALPHA, 0f, 1f)
                 )
-                duration = 350
-                interpolator = OvershootInterpolator(1.5f)
+                duration = 250
+                interpolator = OvershootInterpolator(1.2f)
                 start()
             }
-        }, 400)
+        }, 250)
     }
 
     private fun setupToolbar() {

@@ -73,20 +73,30 @@ class BudgetRepository(private val budgetDao: BudgetDao) {
     }
 
     /**
-     * 设置月度总预算
+     * 设置月度总预算（如果已存在则更新）
      */
     suspend fun setTotalBudget(userId: String, month: String, amount: Double): Long {
-        val budget = Budget(
-            userId = userId,
-            category = null,
-            amount = amount,
-            month = month
-        )
-        return budgetDao.insertBudget(budget)
+        // 先查询是否已存在总预算
+        val existingBudget = budgetDao.getTotalBudget(userId, month)
+        return if (existingBudget != null) {
+            // 已存在，更新金额
+            val updatedBudget = existingBudget.copy(amount = amount)
+            budgetDao.updateBudget(updatedBudget)
+            existingBudget.id
+        } else {
+            // 不存在，插入新记录
+            val budget = Budget(
+                userId = userId,
+                category = null,
+                amount = amount,
+                month = month
+            )
+            budgetDao.insertBudget(budget)
+        }
     }
 
     /**
-     * 设置分类预算
+     * 设置分类预算（如果已存在则更新）
      */
     suspend fun setCategoryBudget(
         userId: String,
@@ -94,12 +104,22 @@ class BudgetRepository(private val budgetDao: BudgetDao) {
         category: String,
         amount: Double
     ): Long {
-        val budget = Budget(
-            userId = userId,
-            category = category,
-            amount = amount,
-            month = month
-        )
-        return budgetDao.insertBudget(budget)
+        // 先查询是否已存在该分类预算
+        val existingBudget = budgetDao.getCategoryBudget(userId, month, category)
+        return if (existingBudget != null) {
+            // 已存在，更新金额
+            val updatedBudget = existingBudget.copy(amount = amount)
+            budgetDao.updateBudget(updatedBudget)
+            existingBudget.id
+        } else {
+            // 不存在，插入新记录
+            val budget = Budget(
+                userId = userId,
+                category = category,
+                amount = amount,
+                month = month
+            )
+            budgetDao.insertBudget(budget)
+        }
     }
 }
