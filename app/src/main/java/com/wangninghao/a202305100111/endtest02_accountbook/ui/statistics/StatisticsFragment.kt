@@ -48,6 +48,12 @@ class StatisticsFragment : Fragment() {
     private lateinit var rankingAdapter: RankingAdapter
     private lateinit var categoryBarAdapter: CategoryBarAdapter
 
+    // 标记是否首次创建，避免动画重复
+    private var isFirstCreate = true
+
+    // 标记是否需要播放图表动画
+    private var shouldAnimateCharts = true
+
     // 图表颜色
     private val chartColors = listOf(
         Color.parseColor("#5C6BC0"),
@@ -81,7 +87,14 @@ class StatisticsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        // 每次返回页面时刷新数据
+        // 首次创建时播放动画，后续返回时不播放
+        if (isFirstCreate) {
+            isFirstCreate = false
+            shouldAnimateCharts = true
+        } else {
+            shouldAnimateCharts = false
+        }
+        // 始终刷新数据，确保数据最新
         viewModel.refreshData()
     }
 
@@ -148,12 +161,14 @@ class StatisticsFragment : Fragment() {
     private fun setupClickListeners() {
         // 月份选择
         binding.btnMonth.setOnClickListener {
+            shouldAnimateCharts = true  // 切换月份时播放动画
             showMonthPicker()
         }
 
         // 支出/收入切换
         binding.toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
+                shouldAnimateCharts = true  // 切换类型时播放动画
                 when (checkedId) {
                     R.id.btnExpense -> viewModel.setRecordType(RecordType.EXPENSE)
                     R.id.btnIncome -> viewModel.setRecordType(RecordType.INCOME)
@@ -217,7 +232,10 @@ class StatisticsFragment : Fragment() {
             data = PieData(dataSet).apply {
                 setValueFormatter(PercentFormatter(binding.pieChart))
             }
-            animateY(800, Easing.EaseInOutQuad)
+            // 根据标志决定是否播放动画
+            if (shouldAnimateCharts) {
+                animateY(800, Easing.EaseInOutQuad)
+            }
             invalidate()
         }
     }
@@ -225,21 +243,20 @@ class StatisticsFragment : Fragment() {
     private fun updateCategoryBars(stats: List<Pair<String, Double>>) {
         if (stats.isEmpty()) return
 
-        // 找出最大值，作为100%基准
-        val maxAmount = stats.maxOfOrNull { it.second } ?: 0.0
-        if (maxAmount == 0.0) return
-
-        // 计算总和用于显示百分比文字
+        // 计算总和
         val total = stats.sumOf { it.second }
+        if (total == 0.0) return
 
         val items = stats.mapIndexed { index, stat ->
+            // 计算所占百分比，同时用于进度条长度和显示文字
+            val percent = ((stat.second / total) * 100).toFloat()
             CategoryBarItem(
                 category = stat.first,
                 amount = stat.second,
-                // 进度条长度按最大值为100%绘制
-                percent = ((stat.second / maxAmount) * 100).toFloat(),
-                // 显示的百分比文字按总和计算
-                displayPercent = if (total > 0) ((stat.second / total) * 100).toFloat() else 0f,
+                // 进度条长度按所占百分比绘制（50%就是半长）
+                percent = percent,
+                // 显示的百分比文字也是同样的值
+                displayPercent = percent,
                 color = chartColors[index % chartColors.size]
             )
         }
@@ -286,7 +303,10 @@ class StatisticsFragment : Fragment() {
                 moveViewToX(0f)
             }
 
-            animateY(800)
+            // 根据标志决定是否播放动画
+            if (shouldAnimateCharts) {
+                animateY(800)
+            }
             invalidate()
         }
     }
