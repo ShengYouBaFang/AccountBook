@@ -39,32 +39,44 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <com.google.android.material.button.MaterialButtonToggleGroup
                     android:id="@+id/toggleGroup"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:padding="4dp"
                     app:checkedButton="@id/btnExpense"
                     app:selectionRequired="true"
                     app:singleSelection="true">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnExpense"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/Widget.Material3.Button.ElevatedButton"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="4dp"
                         android:layout_weight="1"
-                        android:text="@string/expense" />
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/expense"
+                        android:textSize="15sp"
+                        app:cornerRadius="12dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnIncome"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/Widget.Material3.Button.ElevatedButton"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="4dp"
                         android:layout_weight="1"
-                        android:text="@string/income" />
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="@string/income"
+                        android:textSize="15sp"
+                        app:cornerRadius="12dp" />
 
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
@@ -75,8 +87,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -119,8 +132,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:strokeWidth="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"

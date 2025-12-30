@@ -12,11 +12,14 @@ import com.wangninghao.a202305100111.endtest02_accountbook.util.CurrencyFormatte
 
 /**
  * 分类横向柱形条数据
+ * @param percent 进度条长度百分比（按最大值为100%）
+ * @param displayPercent 显示的百分比文字（按总和计算）
  */
 data class CategoryBarItem(
     val category: String,
     val amount: Double,
     val percent: Float,
+    val displayPercent: Float = percent,
     val color: Int
 )
 
@@ -56,7 +59,8 @@ class CategoryBarAdapter : ListAdapter<CategoryBarItem, CategoryBarAdapter.ViewH
         fun bind(item: CategoryBarItem, animate: Boolean) {
             binding.tvCategory.text = item.category
             binding.tvAmount.text = "¥${CurrencyFormatter.format(item.amount)}"
-            binding.tvPercent.text = String.format("%.1f%%", item.percent)
+            // 显示的百分比使用 displayPercent（按总和计算的占比）
+            binding.tvPercent.text = String.format("%.1f%%", item.displayPercent)
 
             // 设置进度条颜色
             binding.progressBar.progressDrawable.setTint(item.color)
@@ -64,7 +68,7 @@ class CategoryBarAdapter : ListAdapter<CategoryBarItem, CategoryBarAdapter.ViewH
             // 取消之前的动画
             currentAnimator?.cancel()
 
-            // 计算目标进度值（确保百分比正确转换）
+            // 进度条长度使用 percent（按最大值为100%）
             val targetProgress = item.percent.toInt().coerceIn(0, 100)
 
             if (animate) {
@@ -80,7 +84,7 @@ class CategoryBarAdapter : ListAdapter<CategoryBarItem, CategoryBarAdapter.ViewH
                 ).apply {
                     duration = 800
                     interpolator = DecelerateInterpolator()
-                    startDelay = (bindingAdapterPosition * 50).toLong() // 错开动画时间
+                    startDelay = (bindingAdapterPosition * 80).toLong() // 错开动画时间
                     start()
                 }
             } else {

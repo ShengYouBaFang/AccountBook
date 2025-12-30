@@ -223,14 +223,23 @@ class StatisticsFragment : Fragment() {
     }
 
     private fun updateCategoryBars(stats: List<Pair<String, Double>>) {
+        if (stats.isEmpty()) return
+
+        // 找出最大值，作为100%基准
+        val maxAmount = stats.maxOfOrNull { it.second } ?: 0.0
+        if (maxAmount == 0.0) return
+
+        // 计算总和用于显示百分比文字
         val total = stats.sumOf { it.second }
-        if (total == 0.0) return
 
         val items = stats.mapIndexed { index, stat ->
             CategoryBarItem(
                 category = stat.first,
                 amount = stat.second,
-                percent = ((stat.second / total) * 100).toFloat(),
+                // 进度条长度按最大值为100%绘制
+                percent = ((stat.second / maxAmount) * 100).toFloat(),
+                // 显示的百分比文字按总和计算
+                displayPercent = if (total > 0) ((stat.second / total) * 100).toFloat() else 0f,
                 color = chartColors[index % chartColors.size]
             )
         }

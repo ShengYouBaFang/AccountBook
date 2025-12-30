@@ -183,22 +183,43 @@ class BudgetFragment : Fragment() {
     }
 
     private fun showSetBudgetDialog() {
-        val editText = EditText(requireContext()).apply {
-            hint = "请输入预算金额"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-            setPadding(48, 32, 48, 32)
-        }
+        val dialogView = layoutInflater.inflate(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.layout.dialog_set_budget,
+            null
+        )
+
+        val etAmount = dialogView.findViewById<android.widget.EditText>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.etAmount
+        )
 
         // 如果已有预算，显示当前值
         viewModel.totalBudget.value?.let {
-            editText.setText(String.format("%.2f", it.amount))
+            etAmount.setText(String.format("%.2f", it.amount))
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle("设置月度总预算")
-            .setView(editText)
+        // 快捷金额按钮
+        val chip1000 = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chip1000
+        )
+        val chip2000 = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chip2000
+        )
+        val chip3000 = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chip3000
+        )
+        val chip5000 = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chip5000
+        )
+
+        chip1000.setOnClickListener { etAmount.setText("1000") }
+        chip2000.setOnClickListener { etAmount.setText("2000") }
+        chip3000.setOnClickListener { etAmount.setText("3000") }
+        chip5000.setOnClickListener { etAmount.setText("5000") }
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
             .setPositiveButton("确定") { _, _ ->
-                val amount = editText.text.toString().toDoubleOrNull()
+                val amount = etAmount.text.toString().toDoubleOrNull()
                 if (amount != null && amount > 0) {
                     viewModel.setTotalBudget(amount)
                 } else {
@@ -220,47 +241,44 @@ class BudgetFragment : Fragment() {
             return
         }
 
-        // 创建对话框布局
-        val layout = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 32, 48, 16)
+        val dialogView = layoutInflater.inflate(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.layout.dialog_add_category_budget,
+            null
+        )
+
+        val chipGroup = dialogView.findViewById<com.google.android.material.chip.ChipGroup>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipGroupCategory
+        )
+        val etAmount = dialogView.findViewById<android.widget.EditText>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.etAmount
+        )
+
+        // 动态添加分类Chips
+        availableCategories.forEach { category ->
+            val chip = com.google.android.material.chip.Chip(requireContext()).apply {
+                text = category
+                isCheckable = true
+                setChipBackgroundColorResource(com.wangninghao.a202305100111.endtest02_accountbook.R.color.chip_background_selector)
+            }
+            chipGroup.addView(chip)
         }
 
-        // 分类选择下拉框
-        val spinner = Spinner(requireContext())
-        val adapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_spinner_dropdown_item,
-            availableCategories
-        )
-        spinner.adapter = adapter
-        layout.addView(spinner)
+        // 默认选中第一个
+        (chipGroup.getChildAt(0) as? com.google.android.material.chip.Chip)?.isChecked = true
 
-        // 金额输入框
-        val editText = EditText(requireContext()).apply {
-            hint = "请输入预算金额"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
-        val params = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        )
-        params.topMargin = 32
-        editText.layoutParams = params
-        layout.addView(editText)
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("添加分类预算")
-            .setView(layout)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
             .setPositiveButton("添加") { _, _ ->
-                val category = spinner.selectedItem as? String
-                val amount = editText.text.toString().toDoubleOrNull()
+                val selectedChipId = chipGroup.checkedChipId
+                val selectedChip = chipGroup.findViewById<com.google.android.material.chip.Chip>(selectedChipId)
+                val category = selectedChip?.text?.toString()
+                val amount = etAmount.text.toString().toDoubleOrNull()
 
                 if (category != null && amount != null && amount > 0) {
                     viewModel.setCategoryBudget(category, amount)
                     Toast.makeText(context, "添加成功", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(context, "请输入正确的金额", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "请选择分类并输入正确的金额", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("取消", null)

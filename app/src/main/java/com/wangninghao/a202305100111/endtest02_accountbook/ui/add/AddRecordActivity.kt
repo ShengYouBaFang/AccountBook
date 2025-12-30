@@ -1,10 +1,14 @@
 package com.wangninghao.a202305100111.endtest02_accountbook.ui.add
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -110,6 +114,49 @@ class AddRecordActivity : AppCompatActivity() {
         setupViews()
         setupCategoryList()
         observeViewModel()
+        playEnterAnimation()
+    }
+
+    /**
+     * 播放入场动画
+     */
+    private fun playEnterAnimation() {
+        // 获取内容区域的子视图
+        val scrollContent = findViewById<View>(R.id.toggleGroup).parent.parent as? View ?: return
+
+        // 初始状态
+        scrollContent.alpha = 0f
+        scrollContent.translationY = 50f
+
+        // 内容区域动画
+        AnimatorSet().apply {
+            playTogether(
+                ObjectAnimator.ofFloat(scrollContent, View.ALPHA, 0f, 1f),
+                ObjectAnimator.ofFloat(scrollContent, View.TRANSLATION_Y, 50f, 0f)
+            )
+            duration = 400
+            startDelay = 200
+            interpolator = DecelerateInterpolator()
+            start()
+        }
+
+        // 保存按钮动画
+        binding.btnSave.scaleX = 0.8f
+        binding.btnSave.scaleY = 0.8f
+        binding.btnSave.alpha = 0f
+
+        binding.btnSave.postDelayed({
+            AnimatorSet().apply {
+                playTogether(
+                    ObjectAnimator.ofFloat(binding.btnSave, View.SCALE_X, 0.8f, 1f),
+                    ObjectAnimator.ofFloat(binding.btnSave, View.SCALE_Y, 0.8f, 1f),
+                    ObjectAnimator.ofFloat(binding.btnSave, View.ALPHA, 0f, 1f)
+                )
+                duration = 350
+                interpolator = OvershootInterpolator(1.5f)
+                start()
+            }
+        }, 400)
     }
 
     private fun setupToolbar() {

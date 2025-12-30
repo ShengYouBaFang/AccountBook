@@ -21,6 +21,9 @@
 
         <!-- Activity过渡动画 -->
         <item name="android:windowAnimationStyle">@style/ActivityAnimation</item>
+
+        <!-- 对话框样式 -->
+        <item name="materialAlertDialogTheme">@style/MaterialAlertDialogTheme</item>
     </style>
 
     <style name="Theme.Endtest02_AccountBook" parent="Base.Theme.Endtest02_AccountBook" />
@@ -64,9 +67,9 @@
 
     <!-- 主按钮样式 -->
     <style name="PrimaryButtonStyle" parent="Widget.Material3.Button">
-        <item name="cornerRadius">12dp</item>
+        <item name="cornerRadius">14dp</item>
         <item name="android:textSize">16sp</item>
-        <item name="android:elevation">4dp</item>
+        <item name="android:elevation">6dp</item>
     </style>
 
     <!-- 底部导航样式 -->
@@ -76,13 +79,36 @@
         <item name="itemTextColor">@color/bottom_nav_color</item>
     </style>
 
-    <!-- 对话框样式 -->
-    <style name="MaterialAlertDialogStyle" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+    <!-- Material对话框主题 -->
+    <style name="MaterialAlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="shapeAppearanceOverlay">@style/DialogCornerRadius</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="buttonBarPositiveButtonStyle">@style/DialogPositiveButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/DialogNegativeButtonStyle</item>
     </style>
 
     <style name="DialogCornerRadius">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">16dp</item>
+        <item name="cornerSize">20dp</item>
+    </style>
+
+    <!-- 对话框确定按钮样式 -->
+    <style name="DialogPositiveButtonStyle" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 对话框取消按钮样式 -->
+    <style name="DialogNegativeButtonStyle" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <!-- Chip样式 -->
+    <style name="ChipStyle" parent="Widget.Material3.Chip.Filter">
+        <item name="chipCornerRadius">12dp</item>
+        <item name="chipMinHeight">36dp</item>
     </style>
 </resources>

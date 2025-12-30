@@ -225,22 +225,112 @@ class HomeFragment : Fragment() {
     }
 
     private fun showFilterDialog() {
-        val options = arrayOf("全部", "支出", "收入", "餐饮", "交通", "购物", "娱乐", "教育", "工资", "奖金", "其他")
+        val dialogView = layoutInflater.inflate(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.layout.dialog_filter,
+            null
+        )
 
-        androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("选择筛选条件")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> viewModel.clearFilter()
-                    1 -> viewModel.setFilterType(com.wangninghao.a202305100111.endtest02_accountbook.data.entity.RecordType.EXPENSE)
-                    2 -> viewModel.setFilterType(com.wangninghao.a202305100111.endtest02_accountbook.data.entity.RecordType.INCOME)
-                    else -> {
-                        viewModel.setFilterType(null)
-                        viewModel.setFilterCategory(options[which])
-                    }
-                }
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
+            .setPositiveButton("确定", null)
+            .setNegativeButton("取消", null)
+            .create()
+
+        // 获取Chip引用
+        val chipAll = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipAll
+        )
+        val chipExpense = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipExpense
+        )
+        val chipIncome = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipIncome
+        )
+
+        // 支出分类Chips
+        val chipFood = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipFood
+        )
+        val chipTransport = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipTransport
+        )
+        val chipShopping = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipShopping
+        )
+        val chipEntertain = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipEntertain
+        )
+        val chipEducation = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipEducation
+        )
+        val chipOther = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipOther
+        )
+
+        // 收入分类Chips
+        val chipSalary = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipSalary
+        )
+        val chipBonus = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipBonus
+        )
+        val chipIncomeOther = dialogView.findViewById<com.google.android.material.chip.Chip>(
+            com.wangninghao.a202305100111.endtest02_accountbook.R.id.chipIncomeOther
+        )
+
+        // 所有Chips列表（用于清除选择）
+        val allChips = listOf(
+            chipAll, chipExpense, chipIncome,
+            chipFood, chipTransport, chipShopping, chipEntertain, chipEducation, chipOther,
+            chipSalary, chipBonus, chipIncomeOther
+        )
+
+        // 清除其他选择的函数
+        fun clearOtherChips(selected: com.google.android.material.chip.Chip) {
+            allChips.forEach { chip ->
+                if (chip != selected) chip.isChecked = false
             }
-            .show()
+        }
+
+        // 设置点击监听
+        chipAll.setOnClickListener { clearOtherChips(chipAll) }
+        chipExpense.setOnClickListener { clearOtherChips(chipExpense) }
+        chipIncome.setOnClickListener { clearOtherChips(chipIncome) }
+        chipFood.setOnClickListener { clearOtherChips(chipFood) }
+        chipTransport.setOnClickListener { clearOtherChips(chipTransport) }
+        chipShopping.setOnClickListener { clearOtherChips(chipShopping) }
+        chipEntertain.setOnClickListener { clearOtherChips(chipEntertain) }
+        chipEducation.setOnClickListener { clearOtherChips(chipEducation) }
+        chipOther.setOnClickListener { clearOtherChips(chipOther) }
+        chipSalary.setOnClickListener { clearOtherChips(chipSalary) }
+        chipBonus.setOnClickListener { clearOtherChips(chipBonus) }
+        chipIncomeOther.setOnClickListener { clearOtherChips(chipIncomeOther) }
+
+        // 设置当前选择状态
+        chipAll.isChecked = true
+
+        dialog.setOnShowListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                when {
+                    chipAll.isChecked -> viewModel.clearFilter()
+                    chipExpense.isChecked -> viewModel.setFilterType(com.wangninghao.a202305100111.endtest02_accountbook.data.entity.RecordType.EXPENSE)
+                    chipIncome.isChecked -> viewModel.setFilterType(com.wangninghao.a202305100111.endtest02_accountbook.data.entity.RecordType.INCOME)
+                    chipFood.isChecked -> { viewModel.setFilterType(null); viewModel.setFilterCategory("餐饮") }
+                    chipTransport.isChecked -> { viewModel.setFilterType(null); viewModel.setFilterCategory("交通") }
+                    chipShopping.isChecked -> { viewModel.setFilterType(null); viewModel.setFilterCategory("购物") }
+                    chipEntertain.isChecked -> { viewModel.setFilterType(null); viewModel.setFilterCategory("娱乐") }
+                    chipEducation.isChecked -> { viewModel.setFilterType(null); viewModel.setFilterCategory("教育") }
+                    chipOther.isChecked -> { viewModel.setFilterType(null); viewModel.setFilterCategory("其他") }
+                    chipSalary.isChecked -> { viewModel.setFilterType(null); viewModel.setFilterCategory("工资") }
+                    chipBonus.isChecked -> { viewModel.setFilterType(null); viewModel.setFilterCategory("奖金") }
+                    chipIncomeOther.isChecked -> { viewModel.setFilterType(null); viewModel.setFilterCategory("其他") }
+                    else -> viewModel.clearFilter()
+                }
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
     }
 
     override fun onDestroyView() {
