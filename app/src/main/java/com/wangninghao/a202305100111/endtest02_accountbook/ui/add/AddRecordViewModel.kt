@@ -1,5 +1,7 @@
 package com.wangninghao.a202305100111.endtest02_accountbook.ui.add
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -9,9 +11,14 @@ import com.wangninghao.a202305100111.endtest02_accountbook.data.entity.Category
 import com.wangninghao.a202305100111.endtest02_accountbook.data.entity.Record
 import com.wangninghao.a202305100111.endtest02_accountbook.data.entity.RecordType
 import com.wangninghao.a202305100111.endtest02_accountbook.data.repository.CategoryRepository
+import com.wangninghao.a202305100111.endtest02_accountbook.data.repository.OCRRepository
 import com.wangninghao.a202305100111.endtest02_accountbook.data.repository.RecordRepository
+import com.wangninghao.a202305100111.endtest02_accountbook.network.OCRParsedResult
+import com.wangninghao.a202305100111.endtest02_accountbook.util.ImageUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 记账页面ViewModel
@@ -19,6 +26,7 @@ import kotlinx.coroutines.launch
 class AddRecordViewModel(
     private val recordRepository: RecordRepository,
     private val categoryRepository: CategoryRepository,
+    private val ocrRepository: OCRRepository,
     private val userId: String
 ) : ViewModel() {
 
@@ -45,6 +53,14 @@ class AddRecordViewModel(
     // 加载状态
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
+
+    // OCR识别结果
+    private val _ocrResult = MutableLiveData<OCRParsedResult?>()
+    val ocrResult: LiveData<OCRParsedResult?> = _ocrResult
+
+    // OCR状态
+    private val _ocrState = MutableLiveData<OCRState>()
+    val ocrState: LiveData<OCRState> = _ocrState
 
     init {
         loadCategories()
@@ -178,6 +194,60 @@ class AddRecordViewModel(
             )
         }
     }
+
+    /**
+     * 执行OCR识别
+     */
+    fun recognizeReceipt(context: Context, imageUri: Uri) {
+        _ocrState.value = OCRState.Loading
+
+        viewModelScope.launch {
+            try {
+                // 在IO线程处理图片（不做URL编码，Retrofit会自动处理）
+                val base64Image = withContext(Dispatchers.IO) {
+                    ImageUtils.uriToBase64(context, imageUri)
+                }
+
+                if (base64Image == null) {
+                    _ocrState.value = OCRState.Error("图片处理失败，请重试")
+                    return@launch
+                }
+
+                // 调用OCR API
+                val result = withContext(Dispatchers.IO) {
+                    ocrRepository.recognizeReceipt(base64Image)
+                }
+
+                _ocrResult.value = result
+
+                if (result.success) {
+                    _ocrState.value = OCRState.Success(result)
+                } else {
+                    _ocrState.value = OCRState.Error(result.errorMessage ?: "识别失败")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _ocrState.value = OCRState.Error("识别失败: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * 清除OCR状态
+     */
+    fun clearOcrState() {
+        _ocrState.value = OCRState.Idle
+        _ocrResult.value = null
+    }
+
+    /**
+     * 应用OCR结果到表单
+     */
+    fun applyOcrResult(amount: Double) {
+        // 设置为支出类型
+        setRecordType(RecordType.EXPENSE)
+        // OCR结果由Activity处理金额填充
+    }
 }
 
 /**
@@ -190,17 +260,28 @@ sealed class SaveState {
 }
 
 /**
+ * OCR状态
+ */
+sealed class OCRState {
+    object Idle : OCRState()
+    object Loading : OCRState()
+    data class Success(val result: OCRParsedResult) : OCRState()
+    data class Error(val message: String) : OCRState()
+}
+
+/**
  * ViewModel工厂
  */
 class AddRecordViewModelFactory(
     private val recordRepository: RecordRepository,
     private val categoryRepository: CategoryRepository,
+    private val ocrRepository: OCRRepository,
     private val userId: String
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AddRecordViewModel::class.java)) {
-            return AddRecordViewModel(recordRepository, categoryRepository, userId) as T
+            return AddRecordViewModel(recordRepository, categoryRepository, ocrRepository, userId) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- 相机拍照临时文件 -->
+    <!-- 内部缓存目录（用于相机拍照临时文件）-->
+    <cache-path
+        name="cache"
+        path="." />
+
+    <!-- 外部缓存目录 -->
     <external-cache-path
-        name="camera_photos"
+        name="external_cache"
         path="." />
 
     <!-- 导出的Excel文件 -->

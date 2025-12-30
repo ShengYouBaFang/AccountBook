@@ -1,17 +1,29 @@
 package com.wangninghao.a202305100111.endtest02_accountbook.ui.profile
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import com.wangninghao.a202305100111.endtest02_accountbook.AccountBookApplication
+import com.wangninghao.a202305100111.endtest02_accountbook.data.repository.RecordRepository
 import com.wangninghao.a202305100111.endtest02_accountbook.databinding.FragmentProfileBinding
 import com.wangninghao.a202305100111.endtest02_accountbook.ui.login.LoginActivity
 import com.wangninghao.a202305100111.endtest02_accountbook.util.DateUtils
+import com.wangninghao.a202305100111.endtest02_accountbook.util.ExcelExporter
 import com.wangninghao.a202305100111.endtest02_accountbook.util.SessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 我的页面Fragment
@@ -22,6 +34,18 @@ class ProfileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var sessionManager: SessionManager
+    private lateinit var recordRepository: RecordRepository
+
+    // 存储权限请求
+    private val storagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            performExport()
+        } else {
+            Toast.makeText(context, "需要存储权限才能导出文件", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -36,6 +60,7 @@ class ProfileFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         sessionManager = SessionManager(requireContext())
+        recordRepository = RecordRepository(AccountBookApplication.instance.database.recordDao())
 
         setupUserInfo()
         setupClickListeners()
@@ -61,7 +86,7 @@ class ProfileFragment : Fragment() {
     private fun setupClickListeners() {
         // 导出Excel
         binding.layoutExport.setOnClickListener {
-            Toast.makeText(context, "Excel导出功能开发中", Toast.LENGTH_SHORT).show()
+            checkStoragePermissionAndExport()
         }
 
         // 关于
@@ -73,6 +98,80 @@ class ProfileFragment : Fragment() {
         binding.btnLogout.setOnClickListener {
             showLogoutDialog()
         }
+    }
+
+    /**
+     * 检查存储权限并导出
+     */
+    private fun checkStoragePermissionAndExport() {
+        // Android 10+ 不需要存储权限来写入Downloads目录
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            performExport()
+        } else {
+            when {
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    performExport()
+                }
+                else -> {
+                    storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }
+        }
+    }
+
+    /**
+     * 执行导出操作
+     */
+    private fun performExport() {
+        val userId = sessionManager.getCurrentUserPhone() ?: return
+
+        // 显示加载提示
+        Toast.makeText(context, "正在导出数据...", Toast.LENGTH_SHORT).show()
+
+        lifecycleScope.launch {
+            try {
+                // 在IO线程获取所有记录
+                val records = withContext(Dispatchers.IO) {
+                    recordRepository.getAllRecordsForExport(userId)
+                }
+
+                if (records.isEmpty()) {
+                    Toast.makeText(context, "没有可导出的数据", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                // 在IO线程执行导出
+                val result = withContext(Dispatchers.IO) {
+                    ExcelExporter.exportRecords(requireContext(), records)
+                }
+
+                result.fold(
+                    onSuccess = { filePath ->
+                        showExportSuccessDialog(filePath, records.size)
+                    },
+                    onFailure = { e ->
+                        Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * 显示导出成功对话框
+     */
+    private fun showExportSuccessDialog(filePath: String, recordCount: Int) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("导出成功")
+            .setMessage("已成功导出 $recordCount 条记录\n\n文件位置：$filePath")
+            .setPositiveButton("确定", null)
+            .show()
     }
 
     private fun showAboutDialog() {
