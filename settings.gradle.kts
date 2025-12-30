@@ -16,9 +16,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // JitPack for MPAndroidChart
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
 rootProject.name = "endtest02_AccountBook"
 include(":app")
- 
