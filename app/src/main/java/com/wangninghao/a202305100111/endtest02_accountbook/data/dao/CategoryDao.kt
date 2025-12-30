@@ -68,4 +68,16 @@ interface CategoryDao {
      */
     @Query("SELECT COUNT(*) FROM categories WHERE userId = :userId")
     suspend fun getCategoryCount(userId: String): Int
+
+    /**
+     * 获取用户所有分类（用于备份）
+     */
+    @Query("SELECT * FROM categories WHERE userId = :userId")
+    suspend fun getAllCategoriesSync(userId: String): List<Category>
+
+    /**
+     * 删除用户所有分类
+     */
+    @Query("DELETE FROM categories WHERE userId = :userId")
+    suspend fun deleteAllCategories(userId: String)
 }

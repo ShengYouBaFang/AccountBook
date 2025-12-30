@@ -11,8 +11,8 @@
     <View
         android:id="@+id/topDecoration"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:background="@color/primary"
+        android:layout_height="220dp"
+        android:background="@drawable/bg_gradient_primary"
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Logo/图标区域 -->

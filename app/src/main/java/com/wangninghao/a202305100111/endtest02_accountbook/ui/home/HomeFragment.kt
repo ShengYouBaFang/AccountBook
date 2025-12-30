@@ -1,15 +1,20 @@
 package com.wangninghao.a202305100111.endtest02_accountbook.ui.home
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.OvershootInterpolator
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.wangninghao.a202305100111.endtest02_accountbook.AccountBookApplication
+import com.wangninghao.a202305100111.endtest02_accountbook.data.entity.Record
 import com.wangninghao.a202305100111.endtest02_accountbook.data.repository.RecordRepository
 import com.wangninghao.a202305100111.endtest02_accountbook.databinding.FragmentHomeBinding
 import com.wangninghao.a202305100111.endtest02_accountbook.ui.add.AddRecordActivity
@@ -55,20 +60,80 @@ class HomeFragment : Fragment() {
         setupRecyclerView()
         setupClickListeners()
         observeViewModel()
+        animateFab()
     }
 
     override fun onResume() {
         super.onResume()
         // 每次返回页面时刷新数据
         viewModel.loadRecords()
+        // 重新播放列表动画
+        binding.recyclerView.scheduleLayoutAnimation()
+    }
+
+    private fun animateFab() {
+        binding.fabAdd.scaleX = 0f
+        binding.fabAdd.scaleY = 0f
+
+        binding.fabAdd.postDelayed({
+            AnimatorSet().apply {
+                playTogether(
+                    ObjectAnimator.ofFloat(binding.fabAdd, View.SCALE_X, 0f, 1f),
+                    ObjectAnimator.ofFloat(binding.fabAdd, View.SCALE_Y, 0f, 1f)
+                )
+                duration = 400
+                interpolator = OvershootInterpolator(2f)
+                start()
+            }
+        }, 300)
     }
 
     private fun setupRecyclerView() {
         adapter = DayRecordsAdapter { record ->
-            // 点击记录，可以跳转到编辑页面
-            Toast.makeText(context, "点击了记录: ${record.category}", Toast.LENGTH_SHORT).show()
+            // 点击记录，弹出操作对话框
+            showRecordActionDialog(record)
         }
         binding.recyclerView.adapter = adapter
+    }
+
+    /**
+     * 显示记录操作对话框
+     */
+    private fun showRecordActionDialog(record: Record) {
+        val options = arrayOf("编辑", "删除")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("${record.category} ¥${CurrencyFormatter.format(record.amount)}")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        // 编辑
+                        val intent = Intent(requireContext(), AddRecordActivity::class.java)
+                        intent.putExtra(AddRecordActivity.EXTRA_RECORD_ID, record.id)
+                        startActivity(intent)
+                    }
+                    1 -> {
+                        // 删除
+                        showDeleteConfirmDialog(record)
+                    }
+                }
+            }
+            .show()
+    }
+
+    /**
+     * 显示删除确认对话框
+     */
+    private fun showDeleteConfirmDialog(record: Record) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("删除记录")
+            .setMessage("确定要删除这条记录吗？\n${record.category} ¥${CurrencyFormatter.format(record.amount)}")
+            .setPositiveButton("删除") { _, _ ->
+                viewModel.deleteRecord(record)
+                Toast.makeText(context, "已删除", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun setupClickListeners() {

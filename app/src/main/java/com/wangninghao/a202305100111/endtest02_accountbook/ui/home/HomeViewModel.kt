@@ -165,6 +165,16 @@ class HomeViewModel(
         _filterCategory.value = null
         loadRecords()
     }
+
+    /**
+     * 删除记录
+     */
+    fun deleteRecord(record: Record) {
+        viewModelScope.launch {
+            recordRepository.deleteRecord(record)
+            loadRecords()
+        }
+    }
 }
 
 /**

@@ -68,4 +68,22 @@ interface BudgetDao {
      */
     @Query("DELETE FROM budgets WHERE userId = :userId AND month = :month AND category = :category")
     suspend fun deleteCategoryBudget(userId: String, month: String, category: String)
+
+    /**
+     * 获取用户所有预算（用于备份）
+     */
+    @Query("SELECT * FROM budgets WHERE userId = :userId")
+    suspend fun getAllBudgets(userId: String): List<Budget>
+
+    /**
+     * 批量插入预算
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBudgets(budgets: List<Budget>)
+
+    /**
+     * 删除用户所有预算
+     */
+    @Query("DELETE FROM budgets WHERE userId = :userId")
+    suspend fun deleteAllBudgets(userId: String)
 }

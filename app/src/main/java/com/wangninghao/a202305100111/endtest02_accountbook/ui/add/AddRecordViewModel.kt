@@ -30,6 +30,14 @@ class AddRecordViewModel(
     private val userId: String
 ) : ViewModel() {
 
+    // 编辑模式：要编辑的记录ID
+    private var editRecordId: Long? = null
+    private var originalRecord: Record? = null
+
+    // 是否为编辑模式
+    private val _isEditMode = MutableLiveData(false)
+    val isEditMode: LiveData<Boolean> = _isEditMode
+
     // 记录类型（支出/收入）
     private val _recordType = MutableLiveData(RecordType.EXPENSE)
     val recordType: LiveData<RecordType> = _recordType
@@ -62,8 +70,51 @@ class AddRecordViewModel(
     private val _ocrState = MutableLiveData<OCRState>()
     val ocrState: LiveData<OCRState> = _ocrState
 
+    // 编辑模式下加载的记录数据
+    private val _editRecordData = MutableLiveData<Record?>()
+    val editRecordData: LiveData<Record?> = _editRecordData
+
     init {
         loadCategories()
+    }
+
+    /**
+     * 设置编辑模式，加载指定记录
+     */
+    fun setEditMode(recordId: Long) {
+        editRecordId = recordId
+        _isEditMode.value = true
+        loadRecordForEdit(recordId)
+    }
+
+    /**
+     * 加载要编辑的记录
+     */
+    private fun loadRecordForEdit(recordId: Long) {
+        viewModelScope.launch {
+            val record = recordRepository.getRecordById(recordId)
+            if (record != null) {
+                originalRecord = record
+                _editRecordData.value = record
+
+                // 设置记录类型
+                _recordType.value = record.type
+                loadCategories()
+
+                // 设置日期
+                _selectedDate.value = record.timestamp
+
+                // 设置分类（需要先等分类加载完成）
+                viewModelScope.launch {
+                    categoryRepository.getCategoriesByType(userId, record.type).collectLatest { categories ->
+                        _categories.value = categories
+                        // 找到对应的分类
+                        val category = categories.find { it.name == record.category }
+                        _selectedCategory.value = category
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -109,7 +160,7 @@ class AddRecordViewModel(
     }
 
     /**
-     * 保存记录
+     * 保存记录（新建或更新）
      */
     fun saveRecord(amount: Double, note: String) {
         val category = _selectedCategory.value
@@ -126,15 +177,30 @@ class AddRecordViewModel(
         _isLoading.value = true
         viewModelScope.launch {
             try {
-                val record = Record(
-                    userId = userId,
-                    type = _recordType.value ?: RecordType.EXPENSE,
-                    amount = amount,
-                    category = category.name,
-                    note = note,
-                    timestamp = _selectedDate.value ?: System.currentTimeMillis()
-                )
-                recordRepository.addRecord(record)
+                if (_isEditMode.value == true && editRecordId != null) {
+                    // 更新模式
+                    val record = Record(
+                        id = editRecordId!!,
+                        userId = userId,
+                        type = _recordType.value ?: RecordType.EXPENSE,
+                        amount = amount,
+                        category = category.name,
+                        note = note,
+                        timestamp = _selectedDate.value ?: System.currentTimeMillis()
+                    )
+                    recordRepository.updateRecord(record)
+                } else {
+                    // 新建模式
+                    val record = Record(
+                        userId = userId,
+                        type = _recordType.value ?: RecordType.EXPENSE,
+                        amount = amount,
+                        category = category.name,
+                        note = note,
+                        timestamp = _selectedDate.value ?: System.currentTimeMillis()
+                    )
+                    recordRepository.addRecord(record)
+                }
                 _saveState.value = SaveState.Success
             } catch (e: Exception) {
                 _saveState.value = SaveState.Error(e.message ?: "保存失败")

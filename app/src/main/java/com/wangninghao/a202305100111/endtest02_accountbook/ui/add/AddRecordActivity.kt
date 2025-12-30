@@ -36,6 +36,10 @@ import java.util.Locale
  */
 class AddRecordActivity : AppCompatActivity() {
 
+    companion object {
+        const val EXTRA_RECORD_ID = "extra_record_id"
+    }
+
     private lateinit var binding: ActivityAddRecordBinding
     private lateinit var categoryAdapter: CategoryAdapter
 
@@ -96,6 +100,12 @@ class AddRecordActivity : AppCompatActivity() {
             insets
         }
 
+        // 检查是否为编辑模式
+        val recordId = intent.getLongExtra(EXTRA_RECORD_ID, -1L)
+        if (recordId != -1L) {
+            viewModel.setEditMode(recordId)
+        }
+
         setupToolbar()
         setupViews()
         setupCategoryList()
@@ -105,6 +115,13 @@ class AddRecordActivity : AppCompatActivity() {
     private fun setupToolbar() {
         binding.toolbar.setNavigationOnClickListener {
             finish()
+        }
+
+        // 编辑模式下更改标题
+        viewModel.isEditMode.observe(this) { isEdit ->
+            if (isEdit) {
+                binding.toolbar.title = "编辑记录"
+            }
         }
     }
 
@@ -221,10 +238,47 @@ class AddRecordActivity : AppCompatActivity() {
     }
 
     private fun setupCategoryList() {
-        categoryAdapter = CategoryAdapter { category ->
-            viewModel.selectCategory(category)
-        }
+        categoryAdapter = CategoryAdapter(
+            onCategoryClick = { category ->
+                viewModel.selectCategory(category)
+            },
+            onAddClick = {
+                showAddCategoryDialog()
+            }
+        )
         binding.rvCategories.adapter = categoryAdapter
+    }
+
+    /**
+     * 显示添加自定义分类对话框
+     */
+    private fun showAddCategoryDialog() {
+        val editText = android.widget.EditText(this).apply {
+            hint = "请输入分类名称"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            setPadding(48, 32, 48, 32)
+        }
+
+        val typeText = if (viewModel.recordType.value == RecordType.EXPENSE) "支出" else "收入"
+
+        AlertDialog.Builder(this)
+            .setTitle("添加$typeText 分类")
+            .setView(editText)
+            .setPositiveButton("添加") { _, _ ->
+                val name = editText.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    if (name.length > 6) {
+                        Toast.makeText(this, "分类名称不能超过6个字符", Toast.LENGTH_SHORT).show()
+                    } else {
+                        viewModel.addCustomCategory(name)
+                        Toast.makeText(this, "添加成功", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this, "请输入分类名称", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun observeViewModel() {
@@ -253,11 +307,22 @@ class AddRecordActivity : AppCompatActivity() {
             updateDateDisplay(timestamp)
         }
 
+        // 观察编辑模式数据加载
+        viewModel.editRecordData.observe(this) { record ->
+            if (record != null) {
+                // 填充金额
+                binding.etAmount.setText(String.format("%.2f", record.amount))
+                // 填充备注
+                binding.etNote.setText(record.note)
+            }
+        }
+
         // 观察保存状态
         viewModel.saveState.observe(this) { state ->
             when (state) {
                 is SaveState.Success -> {
-                    Toast.makeText(this, R.string.save_success, Toast.LENGTH_SHORT).show()
+                    val message = if (viewModel.isEditMode.value == true) "修改成功" else getString(R.string.save_success)
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
                     finish()
                 }
                 is SaveState.Error -> {
