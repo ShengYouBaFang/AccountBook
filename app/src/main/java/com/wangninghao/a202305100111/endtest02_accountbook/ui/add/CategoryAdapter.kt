@@ -1,0 +1,105 @@
+package com.wangninghao.a202305100111.endtest02_accountbook.ui.add
+
+import android.view.LayoutInflater
+import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
+import com.wangninghao.a202305100111.endtest02_accountbook.R
+import com.wangninghao.a202305100111.endtest02_accountbook.data.entity.Category
+import com.wangninghao.a202305100111.endtest02_accountbook.databinding.ItemCategoryBinding
+
+/**
+ * 分类选择适配器
+ */
+class CategoryAdapter(
+    private val onCategoryClick: (Category) -> Unit
+) : ListAdapter<Category, CategoryAdapter.CategoryViewHolder>(CategoryDiffCallback()) {
+
+    private var selectedCategoryId: Long? = null
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CategoryViewHolder {
+        val binding = ItemCategoryBinding.inflate(
+            LayoutInflater.from(parent.context), parent, false
+        )
+        return CategoryViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: CategoryViewHolder, position: Int) {
+        holder.bind(getItem(position))
+    }
+
+    fun setSelectedCategory(categoryId: Long?) {
+        val oldId = selectedCategoryId
+        selectedCategoryId = categoryId
+
+        // 刷新旧的和新的选中项
+        currentList.forEachIndexed { index, category ->
+            if (category.id == oldId || category.id == categoryId) {
+                notifyItemChanged(index)
+            }
+        }
+    }
+
+    inner class CategoryViewHolder(
+        private val binding: ItemCategoryBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        init {
+            binding.root.setOnClickListener {
+                val position = bindingAdapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onCategoryClick(getItem(position))
+                }
+            }
+        }
+
+        fun bind(category: Category) {
+            val context = binding.root.context
+            val isSelected = category.id == selectedCategoryId
+
+            // 分类名称
+            binding.tvName.text = category.name
+
+            // 图标
+            binding.ivIcon.setImageResource(getCategoryIcon(category.name))
+
+            // 选中状态
+            if (isSelected) {
+                binding.layoutIcon.setBackgroundResource(R.drawable.bg_category_selected)
+                binding.ivIcon.setColorFilter(context.getColor(R.color.white))
+                binding.tvName.setTextColor(context.getColor(R.color.primary))
+            } else {
+                binding.layoutIcon.setBackgroundResource(R.drawable.bg_category_unselected)
+                binding.ivIcon.setColorFilter(context.getColor(R.color.text_secondary))
+                binding.tvName.setTextColor(context.getColor(R.color.text_secondary))
+            }
+        }
+
+        private fun getCategoryIcon(category: String): Int {
+            return when (category) {
+                "餐饮" -> R.drawable.ic_category_food
+                "交通" -> R.drawable.ic_category_transport
+                "购物" -> R.drawable.ic_category_shopping
+                "娱乐" -> R.drawable.ic_category_entertainment
+                "教育" -> R.drawable.ic_category_education
+                "医疗" -> R.drawable.ic_category_medical
+                "住房" -> R.drawable.ic_category_housing
+                "通讯" -> R.drawable.ic_category_communication
+                "工资" -> R.drawable.ic_category_salary
+                "奖金" -> R.drawable.ic_category_bonus
+                else -> R.drawable.ic_category_other
+            }
+        }
+    }
+
+    class CategoryDiffCallback : DiffUtil.ItemCallback<Category>() {
+        override fun areItemsTheSame(oldItem: Category, newItem: Category): Boolean {
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(oldItem: Category, newItem: Category): Boolean {
+            return oldItem == newItem
+        }
+    }
+}
