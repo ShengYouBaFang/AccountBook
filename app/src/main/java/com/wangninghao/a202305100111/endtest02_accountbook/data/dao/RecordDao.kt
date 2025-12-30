@@ -3,6 +3,7 @@ package com.wangninghao.a202305100111.endtest02_accountbook.data.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.wangninghao.a202305100111.endtest02_accountbook.data.entity.Record
@@ -141,6 +142,25 @@ interface RecordDao {
     ): List<CategoryStat>
 
     /**
+     * 获取月份分类统计（含笔数，用于排行榜）
+     */
+    @Query("""
+        SELECT category, SUM(amount) as total, COUNT(*) as count FROM records
+        WHERE userId = :userId
+        AND timestamp >= :startTime
+        AND timestamp < :endTime
+        AND type = :type
+        GROUP BY category
+        ORDER BY total DESC
+    """)
+    suspend fun getCategoryStatsWithCountByMonth(
+        userId: String,
+        startTime: Long,
+        endTime: Long,
+        type: RecordType
+    ): List<CategoryStatWithCount>
+
+    /**
      * 获取月份每日统计（用于图表）
      */
     @Query("""
@@ -184,6 +204,18 @@ interface RecordDao {
         endTime: Long,
         category: String
     ): Double
+
+    /**
+     * 批量插入记录
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecords(records: List<Record>)
+
+    /**
+     * 删除用户所有记录
+     */
+    @Query("DELETE FROM records WHERE userId = :userId")
+    suspend fun deleteAllRecords(userId: String)
 }
 
 /**
@@ -200,4 +232,13 @@ data class CategoryStat(
 data class DailyStat(
     val day: String,
     val total: Double
+)
+
+/**
+ * 分类统计数据类（含笔数）
+ */
+data class CategoryStatWithCount(
+    val category: String,
+    val total: Double,
+    val count: Int
 )

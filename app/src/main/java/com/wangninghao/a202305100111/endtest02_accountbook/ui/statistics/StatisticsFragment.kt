@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
@@ -44,6 +45,22 @@ class StatisticsFragment : Fragment() {
         StatisticsViewModelFactory(recordRepository, userId)
     }
 
+    private lateinit var rankingAdapter: RankingAdapter
+    private lateinit var categoryBarAdapter: CategoryBarAdapter
+
+    // 图表颜色
+    private val chartColors = listOf(
+        Color.parseColor("#5C6BC0"),
+        Color.parseColor("#42A5F5"),
+        Color.parseColor("#26A69A"),
+        Color.parseColor("#66BB6A"),
+        Color.parseColor("#FFCA28"),
+        Color.parseColor("#FF7043"),
+        Color.parseColor("#EC407A"),
+        Color.parseColor("#AB47BC"),
+        Color.parseColor("#78909C")
+    )
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -56,9 +73,26 @@ class StatisticsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupAdapters()
         setupCharts()
         setupClickListeners()
         observeViewModel()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 每次返回页面时刷新数据
+        viewModel.refreshData()
+    }
+
+    private fun setupAdapters() {
+        // 排行榜适配器
+        rankingAdapter = RankingAdapter()
+        binding.rvRanking.adapter = rankingAdapter
+
+        // 分类横向柱形条适配器
+        categoryBarAdapter = CategoryBarAdapter()
+        binding.rvCategoryBars.adapter = categoryBarAdapter
     }
 
     private fun setupCharts() {
@@ -67,31 +101,47 @@ class StatisticsFragment : Fragment() {
             setUsePercentValues(true)
             description.isEnabled = false
             isDrawHoleEnabled = true
-            holeRadius = 50f
+            holeRadius = 45f
+            transparentCircleRadius = 50f
             setDrawEntryLabels(false)
             legend.isEnabled = true
-        }
-
-        // 配置分类柱形图
-        binding.barChartCategory.apply {
-            description.isEnabled = false
-            setDrawGridBackground(false)
-            xAxis.position = XAxis.XAxisPosition.BOTTOM
-            xAxis.granularity = 1f
-            axisLeft.axisMinimum = 0f
-            axisRight.isEnabled = false
-            legend.isEnabled = false
+            legend.textSize = 12f
+            setExtraOffsets(5f, 10f, 5f, 5f)
+            rotationAngle = 0f
+            isRotationEnabled = true
+            isHighlightPerTapEnabled = true
         }
 
         // 配置每日柱形图
         binding.barChartDaily.apply {
             description.isEnabled = false
             setDrawGridBackground(false)
-            xAxis.position = XAxis.XAxisPosition.BOTTOM
-            xAxis.granularity = 1f
-            axisLeft.axisMinimum = 0f
+            setDrawBarShadow(false)
+            setDrawValueAboveBar(true)
+            setPinchZoom(false)
+            setScaleEnabled(false)
+
+            xAxis.apply {
+                position = XAxis.XAxisPosition.BOTTOM
+                granularity = 1f
+                setDrawGridLines(false)
+                textSize = 10f
+                textColor = context.getColor(R.color.text_secondary)
+            }
+
+            axisLeft.apply {
+                axisMinimum = 0f
+                setDrawGridLines(true)
+                gridColor = Color.parseColor("#E0E0E0")
+                textSize = 10f
+                textColor = context.getColor(R.color.text_secondary)
+            }
+
             axisRight.isEnabled = false
             legend.isEnabled = false
+
+            // 设置最小条宽和最大条宽
+            setFitBars(true)
         }
     }
 
@@ -125,6 +175,7 @@ class StatisticsFragment : Fragment() {
             } else {
                 getString(R.string.income_composition)
             }
+            rankingAdapter.setRecordType(type)
         }
 
         // 观察分类统计
@@ -134,58 +185,99 @@ class StatisticsFragment : Fragment() {
             } else {
                 binding.layoutEmpty.visibility = View.GONE
                 updatePieChart(stats)
-                updateCategoryBarChart(stats)
+                updateCategoryBars(stats)
             }
+        }
+
+        // 观察排行榜数据
+        viewModel.rankingStats.observe(viewLifecycleOwner) { stats ->
+            rankingAdapter.submitList(stats)
         }
 
         // 观察每日统计
         viewModel.dailyStats.observe(viewLifecycleOwner) { stats ->
             updateDailyBarChart(stats)
         }
+
+        // 观察月度总额（用于计算百分比）
+        viewModel.monthTotal.observe(viewLifecycleOwner) { /* Used in updateCategoryBars */ }
     }
 
     private fun updatePieChart(stats: List<Pair<String, Double>>) {
         val entries = stats.map { PieEntry(it.second.toFloat(), it.first) }
         val dataSet = PieDataSet(entries, "").apply {
-            colors = ColorTemplate.MATERIAL_COLORS.toList()
-            valueTextSize = 12f
+            colors = chartColors
+            valueTextSize = 11f
             valueTextColor = Color.WHITE
+            sliceSpace = 2f
+            selectionShift = 5f
         }
 
-        binding.pieChart.data = PieData(dataSet).apply {
-            setValueFormatter(PercentFormatter(binding.pieChart))
-        }
-        binding.pieChart.invalidate()
-    }
-
-    private fun updateCategoryBarChart(stats: List<Pair<String, Double>>) {
-        val entries = stats.mapIndexed { index, stat ->
-            BarEntry(index.toFloat(), stat.second.toFloat())
-        }
-        val dataSet = BarDataSet(entries, "").apply {
-            colors = ColorTemplate.MATERIAL_COLORS.toList()
-            valueTextSize = 10f
-        }
-
-        binding.barChartCategory.apply {
-            data = BarData(dataSet)
-            xAxis.valueFormatter = IndexAxisValueFormatter(stats.map { it.first })
+        binding.pieChart.apply {
+            data = PieData(dataSet).apply {
+                setValueFormatter(PercentFormatter(binding.pieChart))
+            }
+            animateY(800, Easing.EaseInOutQuad)
             invalidate()
         }
     }
 
+    private fun updateCategoryBars(stats: List<Pair<String, Double>>) {
+        val total = stats.sumOf { it.second }
+        if (total == 0.0) return
+
+        val items = stats.mapIndexed { index, stat ->
+            CategoryBarItem(
+                category = stat.first,
+                amount = stat.second,
+                percent = ((stat.second / total) * 100).toFloat(),
+                color = chartColors[index % chartColors.size]
+            )
+        }
+        categoryBarAdapter.submitList(items)
+    }
+
     private fun updateDailyBarChart(stats: List<Pair<String, Double>>) {
+        if (stats.isEmpty()) {
+            binding.barChartDaily.clear()
+            return
+        }
+
         val entries = stats.mapIndexed { index, stat ->
             BarEntry(index.toFloat(), stat.second.toFloat())
         }
+
         val dataSet = BarDataSet(entries, "").apply {
             color = requireContext().getColor(R.color.primary)
             valueTextSize = 8f
+            valueTextColor = requireContext().getColor(R.color.text_secondary)
+            setDrawValues(stats.size <= 15) // 数据多时不显示值
         }
 
         binding.barChartDaily.apply {
-            data = BarData(dataSet)
-            xAxis.valueFormatter = IndexAxisValueFormatter(stats.map { it.first })
+            data = BarData(dataSet).apply {
+                // 根据数据量动态调整柱形宽度
+                barWidth = when {
+                    stats.size <= 5 -> 0.4f
+                    stats.size <= 10 -> 0.5f
+                    stats.size <= 20 -> 0.6f
+                    else -> 0.7f
+                }
+            }
+
+            xAxis.apply {
+                valueFormatter = IndexAxisValueFormatter(stats.map { "${it.first.toInt()}日" })
+                labelCount = minOf(stats.size, 10)
+                labelRotationAngle = if (stats.size > 15) -45f else 0f
+            }
+
+            // 设置可见范围，数据少时居中显示
+            if (stats.size < 10) {
+                setVisibleXRangeMaximum(10f)
+                moveViewToX(0f)
+            }
+
+            animateY(800)
             invalidate()
         }
     }

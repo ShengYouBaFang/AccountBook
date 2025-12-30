@@ -1,6 +1,7 @@
 package com.wangninghao.a202305100111.endtest02_accountbook.data.repository
 
 import com.wangninghao.a202305100111.endtest02_accountbook.data.dao.CategoryStat
+import com.wangninghao.a202305100111.endtest02_accountbook.data.dao.CategoryStatWithCount
 import com.wangninghao.a202305100111.endtest02_accountbook.data.dao.DailyStat
 import com.wangninghao.a202305100111.endtest02_accountbook.data.dao.RecordDao
 import com.wangninghao.a202305100111.endtest02_accountbook.data.entity.Record
@@ -108,6 +109,18 @@ class RecordRepository(private val recordDao: RecordDao) {
     ): List<CategoryStat> {
         val (startTime, endTime) = DateUtils.getMonthRange(month)
         return recordDao.getCategoryStatsByMonth(userId, startTime, endTime, type)
+    }
+
+    /**
+     * 获取月份分类统计（含笔数）
+     */
+    suspend fun getCategoryStatsWithCountByMonth(
+        userId: String,
+        month: String,
+        type: RecordType
+    ): List<CategoryStatWithCount> {
+        val (startTime, endTime) = DateUtils.getMonthRange(month)
+        return recordDao.getCategoryStatsWithCountByMonth(userId, startTime, endTime, type)
     }
 
     /**
