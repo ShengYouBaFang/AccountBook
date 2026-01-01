@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/navigation_home">
+
+    <!-- 账本主页 -->
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="com.wangninghao.a202305100111.endtest02_accountbook.ui.home.HomeFragment"
+        android:label="@string/nav_home"
+        tools:layout="@layout/fragment_home" />
+
+    <!-- 统计页面 -->
+    <fragment
+        android:id="@+id/navigation_statistics"
+        android:name="com.wangninghao.a202305100111.endtest02_accountbook.ui.statistics.StatisticsFragment"
+        android:label="@string/nav_statistics"
+        tools:layout="@layout/fragment_statistics" />
+
+    <!-- 预算页面 -->
+    <fragment
+        android:id="@+id/navigation_budget"
+        android:name="com.wangninghao.a202305100111.endtest02_accountbook.ui.budget.BudgetFragment"
+        android:label="@string/nav_budget"
+        tools:layout="@layout/fragment_budget" />
+
+    <!-- 我的页面 -->
+    <fragment
+        android:id="@+id/navigation_profile"
+        android:name="com.wangninghao.a202305100111.endtest02_accountbook.ui.profile.ProfileFragment"
+        android:label="@string/nav_profile"
+        tools:layout="@layout/fragment_profile" />
+
+</navigation>

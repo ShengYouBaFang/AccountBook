@@ -1,3 +1,118 @@
 <resources>
-    <string name="app_name">endtest02_AccountBook</string>
+    <!-- 应用名称 -->
+    <string name="app_name">记账本</string>
+
+    <!-- 开发者信息 -->
+    <string name="developer_name">王宁皓</string>
+    <string name="developer_id">202305100111</string>
+
+    <!-- 登录页面 -->
+    <string name="login_title">欢迎使用记账本</string>
+    <string name="login_subtitle">轻松记录每一笔收支</string>
+    <string name="hint_phone">请输入手机号</string>
+    <string name="hint_password">请输入密码</string>
+    <string name="btn_login">登录 / 注册</string>
+    <string name="login_tip">新手机号将自动注册</string>
+    <string name="error_phone_empty">请输入手机号</string>
+    <string name="error_phone_invalid">请输入正确的手机号</string>
+    <string name="error_password_empty">请输入密码</string>
+    <string name="error_password_short">密码长度至少6位</string>
+    <string name="login_success">登录成功</string>
+    <string name="register_success">注册成功</string>
+
+    <!-- 底部导航 -->
+    <string name="nav_home">账本</string>
+    <string name="nav_statistics">统计</string>
+    <string name="nav_budget">预算</string>
+    <string name="nav_profile">我的</string>
+
+    <!-- 主页 -->
+    <string name="filter_all">全部</string>
+    <string name="total_expense">总支出</string>
+    <string name="total_income">总收入</string>
+    <string name="no_records">暂无记录</string>
+    <string name="add_first_record">点击右下角按钮添加第一笔记录</string>
+
+    <!-- 记账页面 -->
+    <string name="add_record">记一笔</string>
+    <string name="edit_record">编辑记录</string>
+    <string name="expense">支出</string>
+    <string name="income">收入</string>
+    <string name="hint_amount">请输入金额</string>
+    <string name="hint_note">添加备注（选填）</string>
+    <string name="select_date">选择日期</string>
+    <string name="select_category">选择分类</string>
+    <string name="add_category">添加分类</string>
+    <string name="btn_save">保存</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_confirm">确认</string>
+    <string name="btn_delete">删除</string>
+    <string name="error_amount_empty">请输入金额</string>
+    <string name="error_amount_invalid">请输入正确的金额</string>
+    <string name="error_category_empty">请选择分类</string>
+    <string name="save_success">保存成功</string>
+    <string name="delete_success">删除成功</string>
+
+    <!-- OCR相关 -->
+    <string name="ocr_scan">扫描小票</string>
+    <string name="ocr_take_photo">拍照</string>
+    <string name="ocr_pick_image">从相册选择</string>
+    <string name="ocr_recognizing">正在识别...</string>
+    <string name="ocr_success">识别成功</string>
+    <string name="ocr_failed">识别失败，请重试</string>
+    <string name="ocr_no_amount">未识别到金额</string>
+
+    <!-- 统计页面 -->
+    <string name="statistics_title">数据统计</string>
+    <string name="expense_composition">支出构成</string>
+    <string name="income_composition">收入构成</string>
+    <string name="category_amount">分类金额</string>
+    <string name="daily_trend">每日趋势</string>
+    <string name="ranking">金额排行</string>
+    <string name="no_data">暂无数据</string>
+
+    <!-- 预算页面 -->
+    <string name="budget_title">预算管理</string>
+    <string name="total_budget">月度总预算</string>
+    <string name="category_budget">分类预算</string>
+    <string name="set_budget">设置预算</string>
+    <string name="budget_used">已使用</string>
+    <string name="budget_remaining">剩余</string>
+    <string name="budget_exceeded">已超支</string>
+    <string name="hint_budget_amount">请输入预算金额</string>
+
+    <!-- 我的页面 -->
+    <string name="profile_title">我的</string>
+    <string name="export_excel">导出Excel</string>
+    <string name="about">关于</string>
+    <string name="logout">退出登录</string>
+    <string name="logout_confirm">确定要退出登录吗？</string>
+    <string name="export_success">导出成功</string>
+    <string name="export_failed">导出失败</string>
+    <string name="about_app">记账本 v1.0</string>
+    <string name="about_developer">开发者：王宁皓 (202305100111)</string>
+
+    <!-- 通用 -->
+    <string name="loading">加载中...</string>
+    <string name="error_network">网络错误，请检查网络连接</string>
+    <string name="error_unknown">未知错误</string>
+    <string name="permission_camera">需要相机权限才能拍照</string>
+    <string name="permission_storage">需要存储权限才能保存文件</string>
+    <string name="grant_permission">授予权限</string>
+
+    <!-- 分类名称 -->
+    <string name="category_food">餐饮</string>
+    <string name="category_transport">交通</string>
+    <string name="category_shopping">购物</string>
+    <string name="category_entertainment">娱乐</string>
+    <string name="category_education">教育</string>
+    <string name="category_medical">医疗</string>
+    <string name="category_housing">住房</string>
+    <string name="category_communication">通讯</string>
+    <string name="category_other">其他</string>
+    <string name="category_salary">工资</string>
+    <string name="category_bonus">奖金</string>
+    <string name="category_parttime">兼职</string>
+    <string name="category_investment">投资</string>
+    <string name="category_redpacket">红包</string>
 </resources>

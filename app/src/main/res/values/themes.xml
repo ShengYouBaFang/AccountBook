@@ -1,9 +1,114 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.Endtest02_AccountBook" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- 主色调 -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorAccent">@color/accent</item>
+
+        <!-- Material 3 颜色 -->
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorOnSecondary">@color/white</item>
+
+        <!-- 背景色 -->
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+
+        <!-- 状态栏 -->
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:navigationBarColor">@color/surface</item>
+
+        <!-- Activity过渡动画 -->
+        <item name="android:windowAnimationStyle">@style/ActivityAnimation</item>
+
+        <!-- 对话框样式 -->
+        <item name="materialAlertDialogTheme">@style/MaterialAlertDialogTheme</item>
     </style>
 
     <style name="Theme.Endtest02_AccountBook" parent="Base.Theme.Endtest02_AccountBook" />
+
+    <!-- Activity过渡动画样式 -->
+    <style name="ActivityAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
+    </style>
+
+    <!-- 底部弹出Activity动画 -->
+    <style name="BottomSheetAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_up</item>
+        <item name="android:activityOpenExitAnimation">@anim/fade_out</item>
+        <item name="android:activityCloseEnterAnimation">@anim/fade_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_down</item>
+    </style>
+
+    <!-- 圆形头像样式 -->
+    <style name="CircleImageView">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <!-- 卡片样式 -->
+    <style name="CardStyle" parent="Widget.Material3.CardView.Filled">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">4dp</item>
+    </style>
+
+    <!-- 输入框样式 -->
+    <style name="InputFieldStyle" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+        <item name="hintTextColor">@color/text_hint</item>
+    </style>
+
+    <!-- 主按钮样式 -->
+    <style name="PrimaryButtonStyle" parent="Widget.Material3.Button">
+        <item name="cornerRadius">14dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:elevation">6dp</item>
+    </style>
+
+    <!-- 底部导航样式 -->
+    <style name="BottomNavStyle" parent="Widget.Material3.BottomNavigationView">
+        <item name="labelVisibilityMode">labeled</item>
+        <item name="itemIconTint">@color/bottom_nav_color</item>
+        <item name="itemTextColor">@color/bottom_nav_color</item>
+    </style>
+
+    <!-- Material对话框主题 -->
+    <style name="MaterialAlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="shapeAppearanceOverlay">@style/DialogCornerRadius</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="buttonBarPositiveButtonStyle">@style/DialogPositiveButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/DialogNegativeButtonStyle</item>
+    </style>
+
+    <style name="DialogCornerRadius">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">20dp</item>
+    </style>
+
+    <!-- 对话框确定按钮样式 -->
+    <style name="DialogPositiveButtonStyle" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 对话框取消按钮样式 -->
+    <style name="DialogNegativeButtonStyle" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <!-- Chip样式 -->
+    <style name="ChipStyle" parent="Widget.Material3.Chip.Filter">
+        <item name="chipCornerRadius">12dp</item>
+        <item name="chipMinHeight">36dp</item>
+    </style>
 </resources>
